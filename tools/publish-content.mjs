@@ -30,6 +30,18 @@
 
      Then:  git add -A && git commit -m "Add photos" && git push
 
+   Running on the server
+   ─────────────────────
+     netlify.toml asks Netlify to run this with --build on every deploy, so
+     the photos/ folder IS the picture page: drop a picture in, push, and it
+     is on the site. Nothing to edit, nothing to remember.
+
+     --build differs in three ways, all of them about not surprising a
+     deploy: it only ever touches the photos (a backup file lying in the
+     folder is left alone, so nobody's letters can be rewritten behind their
+     back), it writes no index.html.bak into the published site, and an
+     empty photos/ folder is a shrug rather than a failed build.
+
    Captions (optional)
    ───────────────────
    Make a file photos/captions.txt with one line per picture:
@@ -54,12 +66,17 @@ const BIG_FILE  = 1_500_000;                     // nag above roughly 1.5 MB
 if (!fs.existsSync(HTML)) die('index.html is not here. Run this from the project folder.');
 fs.mkdirSync(PHOTO_DIR, { recursive: true });
 
+/* ── how were we called ─────────────────────────────────────────────────── */
+const args  = process.argv.slice(2);
+const BUILD = args.includes('--build');            // running on the host, mid-deploy
+
 /* ── which backup file, if any ──────────────────────────────────────────── */
-let backupPath = process.argv[2] || null;
+let backupPath = args.find(a => !a.startsWith('--')) || null;
+if (BUILD) backupPath = null;                      // deploys never touch the letters
 if (backupPath && !fs.existsSync(backupPath)) {
   die(`I cannot find "${backupPath}" — check the name and that it is in this folder.`);
 }
-if (!backupPath) {
+if (!backupPath && !BUILD) {
   const found = fs.readdirSync(ROOT).filter(f => /backup.*\.json$/i.test(f) || /^gazette.*\.json$/i.test(f));
   if (found.length === 1) { backupPath = found[0]; note(`using the backup file ${found[0]}`); }
   else if (found.length > 1) die(`There are several backup files here:\n  ${found.join('\n  ')}\nName the one you want:\n\n  node tools/publish-content.mjs ${found[0]}`);
@@ -111,6 +128,9 @@ const files   = all.filter(f => IMAGE_EXT.has(path.extname(f).toLowerCase()))
                    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 
 if (!files.length && !messages.length) {
+  /* mid-deploy this is not an error worth failing a build over — an empty
+     picture page is a fine thing for a site to have */
+  if (BUILD) { console.log('  photos/ is empty — the picture page is left as it is.'); process.exit(0); }
   die('There are no images in photos/ and no letters to publish.\n' +
       'Copy your pictures into the photos/ folder and run this again.');
 }
@@ -149,7 +169,9 @@ if (!r1.found && !r2.found) {
       'Has the CONFIG block at the top of the file been renamed?');
 }
 if (html !== before) {
-  fs.writeFileSync(HTML + '.bak', before);
+  /* no .bak on a deploy: it would be published alongside the site, and the
+     real previous version is in git anyway */
+  if (!BUILD) fs.writeFileSync(HTML + '.bak', before);
   fs.writeFileSync(HTML, html);
 }
 
@@ -160,7 +182,8 @@ console.log(`  photos published  : ${entries.length}${totalBytes ? `  (${(totalB
 if (extracted) console.log(`                      ${extracted} of them pulled out of the backup file`);
 console.log(`  letters published : ${msgBlock ? messages.length : 'unchanged (no backup file given)'}`);
 console.log(html === before ? '  index.html already said exactly this — nothing to change.'
-                            : '  index.html updated, previous version saved as index.html.bak');
+            : BUILD        ? '  index.html updated for this deploy (the repository is untouched)'
+                           : '  index.html updated, previous version saved as index.html.bak');
 
 if (skipped.length) {
   console.log('');
@@ -174,11 +197,13 @@ if (heavy.length) {
   heavy.forEach(f => console.log(`      ${f}`));
   console.log(`      Shrinking them to about 1600px wide is plenty.`);
 }
-console.log('');
-console.log('  Now put it live:');
-console.log('    git add -A');
-console.log('    git commit -m "Add the photos"');
-console.log('    git push');
+if (!BUILD) {
+  console.log('');
+  console.log('  Now put it live:');
+  console.log('    git add -A');
+  console.log('    git commit -m "Add the photos"');
+  console.log('    git push');
+}
 console.log('');
 
 /* Replaces `photos: [ ... ],` or `messages: [ ... ],` inside CONFIG, matching

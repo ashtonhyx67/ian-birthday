@@ -1,0 +1,36 @@
+# ═══════════════════════════════════════════════════════════════════════════
+#  How Netlify builds the paper.
+#
+#  The one job here is the picture page. Before the site goes out, Netlify
+#  reads the photos/ folder and writes whatever it finds into the page, in
+#  name order. So the folder IS the picture page:
+#
+#       drop a picture into photos/  →  git push  →  it is on the site
+#
+#  Nothing to edit in index.html, nothing to remember, nothing to run.
+#  Remove a picture from the folder and it leaves the site the same way.
+#
+#  Captions are optional: make a photos/captions.txt with one line per
+#  picture, "filename.jpg | the caption".
+#
+#  --build keeps the deploy honest: it only ever touches the photos, so the
+#  letters in index.html are never rewritten behind your back.
+# ═══════════════════════════════════════════════════════════════════════════
+
+[build]
+  publish = "."
+  command = "node tools/publish-content.mjs --build"
+
+# The editor's private backup and the working copy of the page are part of the
+# project, not part of the paper — no reason to serve them to readers.
+[[redirects]]
+  from = "/index.html.bak"
+  to = "/"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/ian-gazette-backup.json"
+  to = "/"
+  status = 404
+  force = true
