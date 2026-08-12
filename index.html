@@ -1457,10 +1457,10 @@ const Music=(function(){
   try{const v=localStorage.getItem(KEY);if(v!==null)want=(v==='1')}catch(e){}
   if(matchMedia('(prefers-reduced-motion:reduce)').matches){/* still fine to play */}
 
-  let engine=null,playing=false,armed=false,touched=false;
+  let engine=null,playing=false,armed=false,touched=false,lastError=null;
 
   /* ── engine one: a real audio file ── */
-  function fileEngine(a){
+  function fileEngine(a,onBlocked){
     let fade=null;
     const ramp=(to,ms)=>{
       clearInterval(fade);const from=a.volume,t0=performance.now();
@@ -1472,7 +1472,14 @@ const Music=(function(){
     };
     return{
       kind:'file',
-      start(){const p=a.play();if(p&&p.catch)p.catch(()=>{});ramp(VOL,1200)},
+      get state(){return a.paused?'paused':'playing '+a.currentTime.toFixed(1)+'s of '+(a.duration||0).toFixed(0)+'s'},
+      start(){
+        const p=a.play();
+        /* the browser can still refuse — if it does, wait for another tap
+           rather than leaving the reader in silence with the switch on */
+        if(p&&p.catch)p.catch(e=>{lastError=e&&(e.name+': '+e.message);if(onBlocked)onBlocked()});
+        ramp(VOL,1200);
+      },
       stop(){ramp(0,600)}
     };
   }
@@ -1482,7 +1489,7 @@ const Music=(function(){
      chasing its own tail round a delay line the length of one wavelength,
      losing a little brightness each lap. That is genuinely how a plucked
      string decays, which is why it sounds like nylon and not like a beep. */
-  function guitarEngine(){
+  function guitarEngine(onBlocked){
     const AC=window.AudioContext||window.webkitAudioContext;
     if(!AC)return null;
     let ctx=null,master=null,timer=null,next=0,bar=0;
@@ -1536,7 +1543,12 @@ const Music=(function(){
           const warm=ctx.createBiquadFilter();warm.type='lowpass';warm.frequency.value=5200;
           master.connect(warm);warm.connect(ctx.destination);
         }
-        if(ctx.state==='suspended')ctx.resume();
+        if(ctx.state==='suspended'){
+          const p=ctx.resume();
+          if(p&&p.catch)p.catch(()=>{if(onBlocked)onBlocked()});
+          /* some browsers resolve the promise and stay suspended anyway */
+          setTimeout(()=>{if(ctx.state!=='running'&&onBlocked)onBlocked()},400);
+        }
         next=Math.max(next,ctx.currentTime+0.15);
         master.gain.cancelScheduledValues(ctx.currentTime);
         master.gain.setValueAtTime(Math.max(0.0001,master.gain.value),ctx.currentTime);
@@ -1554,21 +1566,42 @@ const Music=(function(){
     };
   }
 
-  /* Decide which engine we have, well before anybody taps anything, so the
-     first tap can start the sound immediately. A file that will not load
-     (missing, wrong name, unplayable) quietly hands over to the guitar. */
+  /* Which engine are we using? Decided before anybody taps anything, so the
+     first tap can start the sound straight away.
+
+     The question we care about is "is the song actually there?", NOT "has it
+     finished buffering?" — a four-megabyte file on a phone can take a while,
+     and a browser will not even begin fetching it while the tab sits in the
+     background. So we ask the server directly with a HEAD request: a real
+     answer means we commit to the file and wait for it however long it takes;
+     a 404 (missing, renamed, wrong folder) hands over to the guitar. If the
+     file turns out to be unplayable later, the guitar takes over then. */
   function choose(){
     const src=(CONFIG.music||'').trim();
-    if(!src){engine=guitarEngine();return}
-    const a=new Audio();a.loop=true;a.preload='auto';a.volume=0;a.src=src;
+    if(!src){engine=guitarEngine(blocked);return}
+    const a=new Audio();a.loop=true;a.preload='auto';a.volume=0;
     let settled=false;
-    const good=()=>{if(settled)return;settled=true;engine=fileEngine(a);if(playing)engine.start()};
-    const bad =()=>{if(settled)return;settled=true;engine=guitarEngine();if(playing&&engine)engine.start()};
-    a.addEventListener('canplaythrough',good,{once:true});
-    a.addEventListener('canplay',good,{once:true});
-    a.addEventListener('error',bad,{once:true});
-    setTimeout(()=>{if(!settled&&a.readyState<3)bad()},4000);
-    try{a.load()}catch(e){bad()}
+    const useFile=()=>{if(settled)return;settled=true;engine=fileEngine(a,blocked);if(playing)engine.start()};
+    const useGuitar=()=>{if(settled)return;settled=true;engine=guitarEngine(blocked);if(playing&&engine)engine.start()};
+
+    a.addEventListener('canplay',useFile);
+    a.addEventListener('error',()=>{
+      if(settled&&engine&&engine.kind==='file'){       // it broke after we picked it
+        const was=playing;hush();settled=false;engine=null;useGuitar();if(was)play();
+      }else useGuitar();
+    });
+    a.src=src;
+    try{a.load()}catch(e){useGuitar()}
+
+    if(location.protocol==='file:'){
+      /* opened straight off the disk — no server to ask, so let the audio
+         element's own events decide, with a long stop-gap for silence */
+      setTimeout(()=>{if(!settled&&a.readyState===0)useGuitar()},15000);
+    }else{
+      fetch(src,{method:'HEAD'})
+        .then(r=>{r.ok?useFile():useGuitar()})
+        .catch(()=>{setTimeout(()=>{if(!settled&&a.readyState===0)useGuitar()},15000)});
+    }
   }
 
   function paint(){
@@ -1578,6 +1611,8 @@ const Music=(function(){
   }
   function play(){ if(playing)return;playing=true;if(engine)engine.start() }
   function hush(){ if(!playing)return;playing=false;if(engine)engine.stop() }
+  /* the browser turned us down — go back to waiting for a tap */
+  function blocked(){ playing=false;armed=false;arm() }
 
   /* the first touch anywhere on the page is what buys us permission */
   function arm(){
@@ -1610,7 +1645,8 @@ const Music=(function(){
   paint();choose();arm();
   /* handy from the console: Music.status */
   return{play,hush,get on(){return want},
-         get status(){return{wanted:want,playing,engine:engine&&engine.kind,state:engine&&engine.state}}};
+         get status(){return{wanted:want,playing,engine:engine&&engine.kind,
+                             state:engine&&engine.state,source:CONFIG.music,lastError}}};
 })();
 
 /* nothing is read or written until the store has been chosen */
