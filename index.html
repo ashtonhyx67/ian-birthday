@@ -58,11 +58,6 @@ const CONFIG = {
     envStampBottom:    "Class",
     envTo:             "To:",                          // the addressee line, name is added after it
 
-    /* the cake */
-    icingTop:          "Happy Birthday",               // piped on the top tier
-    icingTopSub:       "Baked this morning",
-    icingBottom:       "Many Happy Returns",           // piped on the bottom tier
-    icingBottomSub:    "Serves everyone who loves you",
 
     /* the two cards either side of the cake */
     tierMessages:      "The Messages",                 // left-hand card
@@ -71,12 +66,9 @@ const CONFIG = {
     tierPhotosSub:     "Page Three · Tap to look",
     cardKicker:        "Turn to",
     cardCta:           "Read on →",
-    cakeHint:          "Tap the candles to blow them out.",
-    figLit:            "Fig. 1 — The candles, presently alight.",
-    figOut:            "Fig. 2 — Wish granted.",
-    blowButton:        "Make a wish & blow out the candles",
-    relightButton:     "Relight the candles",
-    stamp:             "Wish Granted",
+
+    /* the cake */
+    stamp:             "Wish Granted",                  // the red stamp once the candles are out
 
     /* page two — the messages */
     messagesTagline:   "Page Two  ·  Letters",
@@ -306,15 +298,11 @@ body{color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6;-we
 .candle .smoke{transition:opacity .8s,transform 1.1s}
 .candle.out .smoke{opacity:.75;transform:translateY(-11px)}
 
-.stamp{position:absolute;top:44%;left:50%;font-family:var(--head);font-weight:900;font-size:clamp(1rem,3.6vw,1.8rem);
+.stamp{position:absolute;top:31%;left:50%;   /* sits above the icing, not across it */font-family:var(--head);font-weight:900;font-size:clamp(1rem,3.6vw,1.8rem);
   text-transform:uppercase;letter-spacing:.06em;color:var(--red);border:5px double var(--red);padding:8px 18px;
   transform:translate(-50%,-50%) rotate(-14deg) scale(2.2);opacity:0;pointer-events:none;white-space:nowrap;z-index:5}
 .stamp.on{opacity:.92;transform:translate(-50%,-50%) rotate(-14deg) scale(1);transition:opacity .12s,transform .3s cubic-bezier(.2,1.7,.4,1)}
 
-.fig{font-family:var(--type);font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;text-align:center;
-  margin:clamp(6px,1.4vh,14px) 0 0;color:var(--ink2)}
-.fig b{color:var(--red);font-weight:400}
-.cakebtns{display:flex;gap:10px;justify-content:center;margin-top:clamp(8px,1.6vh,16px);flex-wrap:wrap}
 .byline{text-align:center;font-family:var(--type);font-size:.58rem;letter-spacing:.18em;text-transform:uppercase;
   color:var(--ink2);margin:clamp(8px,1.6vh,18px) 0 0}
 
@@ -455,7 +443,6 @@ input:focus,textarea:focus{outline:2px solid var(--red);outline-offset:0}
 }
 @media(max-width:520px){
   .dateline{justify-content:center;gap:2px 10px}
-  .cakebtns .btn{width:100%}
   .topbar{gap:6px}
   .navbtn{padding:8px 10px;font-size:.56rem}
 }
@@ -587,11 +574,6 @@ input:focus,textarea:focus{outline:2px solid var(--red);outline-offset:0}
         <div class="stamp" id="stamp" data-txt="stamp">Wish Granted</div>
       </div>
 
-      <p class="fig" id="fig"></p>
-      <div class="cakebtns">
-        <button class="btn" id="blowBtn" data-txt="blowButton">Make a wish &amp; blow out the candles</button>
-        <button class="btn ghost" id="relightBtn" style="display:none" data-txt="relightButton">Relight the candles</button>
-      </div>
       </div><!-- /cakecol -->
 
       <div class="sidecard right" id="cardPics" data-go="screen-photos" role="button" tabindex="0"
@@ -693,8 +675,15 @@ $('dl-date').textContent=new Date().toLocaleDateString(undefined,{weekday:'long'
 $('dl-price').textContent='Price: '+CONFIG.price;
 $('hl').textContent=CONFIG.headline?CONFIG.headline+' ':'Happy Birthday ';
 $('hlName').textContent=CONFIG.name;
-$('sub').textContent=CONFIG.subhead;
-$('by').textContent=CONFIG.byline;
+/* subhead and byline are optional — delete them from CONFIG and the line goes
+   away entirely rather than printing the word "undefined" */
+setOrHide('sub',CONFIG.subhead);
+setOrHide('by',CONFIG.byline);
+function setOrHide(id,txt){
+  const el=$(id);if(!el)return;
+  if(txt===undefined||txt===null||String(txt).trim()===''){el.style.display='none';return}
+  el.style.display='';el.textContent=txt;
+}
 $('foot').textContent=CONFIG.name;
 $('foot2').textContent=CONFIG.name;
 document.title=CONFIG.paperName;
@@ -708,7 +697,6 @@ if(LEAD){
   $('storySection').style.display='none';
   $('lettersHead').style.marginTop='0';
 }
-$('fig').innerHTML=esc(word('figLit','Fig. 1 — The candles, presently alight.'))+' <b>'+esc(word('cakeHint',''))+'</b>';
 
 /* ── router: one screen fills the window at a time ── */
 const SCREENS=['screen-gate','screen-home','screen-messages','screen-photos'];
@@ -726,11 +714,19 @@ document.querySelectorAll('[data-go]').forEach(el=>{
 
 /* ── ACT ONE → ACT TWO ────────────────────────────────────────────────────
    Tap the envelope: the flap lifts, the envelope drops away, the cake vaults
-   up through a shower of confetti, and the two cards drop in beside it.
-   Opened once, it stays opened for the rest of the visit — coming back from
-   page two or three does not replay the show.
+   up through a shower of confetti, the two cards drop in beside it, and a
+   moment later the candles blow themselves out.
+
+   Every refresh starts sealed again, so the surprise plays from the top each
+   time the page is loaded. Wandering to page two or three and coming back
+   does NOT replay it — only an actual reload does.
+
+   ► The numbers below are the running order in milliseconds. Raise them to
+     slow the whole thing down.
    ───────────────────────────────────────────────────────────────────────── */
-const OPEN_KEY='wall_opened';
+const T_CAKE  = 820,    // envelope gone, cake vaults up, confetti bursts
+      T_CARDS = 1600,   // the two cards drop in
+      T_SETTLE= 2500;   // everything has landed
 const REDUCED=matchMedia('(prefers-reduced-motion:reduce)').matches;
 $('envName').textContent=CONFIG.name;
 $('bigWax').textContent=CONFIG.age||(CONFIG.name||'?').trim().charAt(0).toUpperCase();
@@ -744,16 +740,17 @@ function revealNow(){                       /* straight to the cake, no show */
 let opening=false;
 function openEnvelope(){
   if(opening)return;opening=true;
-  try{sessionStorage.setItem(OPEN_KEY,'1')}catch(e){}
-  if(REDUCED){revealNow();return}
+  if(REDUCED){revealNow();wishTimer=setTimeout(blowOut,WISH_DELAY);return}
   const env=$('envStage'),rev=$('reveal');
   env.classList.add('go');
   setTimeout(()=>{
     env.hidden=true;rev.hidden=false;rev.classList.add('pop');
     confetti();
-  },820);
-  setTimeout(()=>rev.classList.add('cards'),1600);
-  setTimeout(settleStage,2500);
+  },T_CAKE);
+  setTimeout(()=>rev.classList.add('cards'),T_CARDS);
+  setTimeout(settleStage,T_SETTLE);
+  /* the wish happens on its own once everything has landed */
+  wishTimer=setTimeout(blowOut,T_SETTLE+WISH_DELAY);
 }
 $('bigEnv').onclick=openEnvelope;
 
@@ -1000,13 +997,10 @@ function tryGate(){
   }
 }
 (function(){
-  let unlocked=false,opened=false;
-  try{unlocked=sessionStorage.getItem(GATE_KEY)==='1';opened=sessionStorage.getItem(OPEN_KEY)==='1'}catch(e){}
-  if(unlocked){
-    showScreen('screen-home');
-    if(opened){opening=true;revealNow()}   /* refreshed mid-visit: the cake is already out */
-    return;
-  }
+  let unlocked=false;
+  try{unlocked=sessionStorage.getItem(GATE_KEY)==='1'}catch(e){}
+  /* the envelope is always sealed on a fresh load — the show plays every time */
+  if(unlocked){showScreen('screen-home');return}
   $('gatePw')&&$('gatePw').focus();
 })();
 
@@ -1103,34 +1097,35 @@ async function loadPics(){
 $('next').onclick=()=>$('rail').scrollBy({left:$('rail').clientWidth*.75,behavior:'smooth'});
 $('prev').onclick=()=>$('rail').scrollBy({left:-$('rail').clientWidth*.75,behavior:'smooth'});
 
-/* ── the candles ── */
+/* ── the candles ───────────────────────────────────────────────────────────
+   No buttons. Once the cake is out and the cards have landed, the candles
+   blow themselves out one by one and the stamp lands. Tapping the candles
+   does it early — or lights them again afterwards, if you fancy another go.
+   ► WISH_DELAY is the pause between the cards landing and the first candle
+     going out. Make it bigger for a longer look at the lit cake.
+   ───────────────────────────────────────────────────────────────────────── */
+const WISH_DELAY=1400;
 const candles=[$('c1'),$('c2'),$('c3')];
-let blown=false;
+let blown=false,wishTimer=0;
 function blowOut(){
   if(blown)return;blown=true;
-  $('blowBtn').disabled=true;
+  clearTimeout(wishTimer);
   candles.forEach((c,i)=>setTimeout(()=>c.classList.add('out'),i*520));
   setTimeout(()=>{
-    $('fig').innerHTML=esc(word('figOut','Fig. 2 — Wish granted.'))+' <b>'+esc(word('cakeHint',''))+'</b>';
     $('stamp').classList.add('on');
-    $('blowBtn').style.display='none';
-    $('relightBtn').style.display='inline-block';
     confetti({small:true,y:.5});          /* a smaller cheer for the wish */
   },candles.length*520+300);
 }
 function relight(){
+  clearTimeout(wishTimer);
   blown=false;
   candles.forEach(c=>c.classList.remove('out'));
-  $('fig').innerHTML=esc(word('figLit','Fig. 1 — The candles, presently alight.'))+' <b>'+esc(word('cakeHint',''))+'</b>';
   $('stamp').classList.remove('on');
-  $('blowBtn').style.display='inline-block';$('blowBtn').disabled=false;
-  $('relightBtn').style.display='none';
 }
-$('blowBtn').onclick=blowOut;
-$('relightBtn').onclick=relight;
-/* the candles themselves are clickable too */
-$('candleZone').addEventListener('click',blowOut);
-$('candleZone').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();blowOut()}});
+/* the candles are their own switch */
+function toggleCandles(){blown?relight():blowOut()}
+$('candleZone').addEventListener('click',toggleCandles);
+$('candleZone').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleCandles()}});
 
 /* ══ ADMIN (hidden editorial panel — separate from the site password) ══ */
 let authed=false,tab='letters';
