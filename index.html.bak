@@ -26,15 +26,25 @@ const CONFIG = {
 
   sitePassword:  "birthday",             // ← change this. Guests need this to enter the site at all.
   adminPassword: "cakepin",              // ← change this. Used to unlock the hidden editorial panel.
-  photos: [],                            // optional starting image URLs
+  photos: [],
 
   /* Letters baked into the file itself — these travel with it anywhere you
      send it and can never be lost. Anything you write in the newsroom is
      saved in your browser straight away; use the newsroom's Backup tab to
      copy it into this list when you want it to be permanent. */
   messages: [
-    // {n: "Name",  t: "Their message. Line breaks are fine."},
-  ],
+      {n: "Tse Xuan", t: "Happy birthday Ian! Even though we had only met like twice, it’s been nice getting to know you. I hope you’re enjoying life in the UK and that it brings you lots of fresh experiences and happiness! All the best for your studies and to more memories together when you’re back in Singapore :)"},
+      {n: "Josh", t: "HAPPY BIRTHDAY IANNN, its been awhile since ur back, pls come back. I hope that as u study overseas, your passion & fire for God will not be diminished, it will be even stronger!! Can't wait for u to come back & we can have fun togetherrr. Continue growing, continue loving, continue to seek God even when it may be hard. Love you Ian, see you soon"},
+      {n: "Louis", t: "HAPPY BIRTHDAY IAN!! 🥳 XIII misses you lots including me I hope your well and doinggg well inn you're studiess, hope your hunger for god will bring you back to church sooonn hope to grow wif you yo!!!"},
+      {n: "Toby", t: "HAPPY BIRTHDAY IAAAAN!!!! Im soo glad you were one of the first few people i met in church when i first came. Thankyou for being such a kind soul by making me feel so welcome and talking to me. I hope that youre having a good time in the UK mate and ill be awaiting for your exciting return back to singaporee. Really preciate you for being such a beautiful and kind friend to be around with iannn. Hope you have a blessed birthday ahead!!"},
+      {n: "Ashton Heng", t: "HELLO IAN!! Happy birthday!! Wow time really flies, especially when you have been away as well.. I cant wait to see you back in SG man, its been awhile really! your presence really brings life & joy to the CG, and iit really doesnt fail to make us all happy! I just wanna say that we gotta ctach up fr fr, so many things have happened and now its time for you to come back soon for army as well LOLOL but i just wanna say that your destiny in church has never left, and no matter how long u have been away for, God always has  a plan for you as well.. so i hope you are taking care of yourself well ovs, and i hope that you are managing/coping with your commitments as well. YOU GOTTA TELL ME MORE MAN! but anyway really happy birthday and see you soonnn"},
+      {n: "Jacob", t: "HAPPY BIRTHDAY IANNN, still remember when we first had our convo, you coming back to church playing baseball with us. I hope you’re enjoying ur time in the UK. I’m very excited for you to come back. The first time I meet you I felt that you have a very good and huge heart and you love people and church. Can’t wait for you to fly back to sg and spend more time with us !!!! HAPPY BIRTHDAY IAN"},
+      {n: "Joelle", t: "happy birthday ian! its so sad that we are unable to celebrate your birthday with you physically but hopefully we will see you soon! i hope that school has been good for you and youre coping well. i also hope that your walk with God never stops! jiayous for everything and see you again"},
+      {n: "Willemyn", t: "Happy birthday ian!! Sucks you cant spend your birthday here with us but i hope you enjoyed what we put together for you! Even though youve been living in uk for the past few months, i love how you are still present in the cg! You will always have your place here in x zone regardless of whether you’re physically here or not! You bring so much joy and personality into the cg and you have always been so easy to talk to! Anyway i hope school and life in the uk are going well for you and that you are still growing in God. Keep seeking him in all that you do! We are so excited for you to come back to sg and for all of us to be together again happy birthdayy!\n-willemyn"},
+      {n: "Glynnis", t: "Happy birthday Ian 💗!\n\nHope you have an amazing birthday! Honestly, it’s been such a crazy journey, and I’m really grateful that I’ve gotten to walk through it with you. Seeing you on your first day in church and being there along the way has truly been such a privilege. 🥹\n\nI’m really grateful that we’re in the same CG and get to continue growing together, both as individuals and as a team! I’m excited to see all that’s ahead for you!\n\nHope you have an amazing time in London and enjoy your birthday there! 🎂🇬🇧💗"},
+      {n: "Malcom", t: "HAPPY BDAY IANNNNN, it's been a good minute since ur back in SG but Ik the Zone and the Church and especially God has not left your side :))) Keep studying hard and pushing through all the tough moments with God too! Love you and can't wait to supper with you and JSK again GAHAHAHAHA HAPPY BDAY IANNN SEE U SOOOONNNN"},
+      {n: "Cedric", t: "Dear Ian, HAPPY BIRTHDAY\nReally miss you here in SG, miss playing guitar with you\nHaven’t caught up for a while hope that the UK has been treating you well.\nIf not, remember that here in Singapore you always have a family waiting for you :)\nKnow that your destiny in God is still great and can’t wait for you to come back and we will be serving together\nHAPPY BIRTHDAY!"},
+    ],
 
   /* ══════════════════════════════════════════════════════════════
      EVERY OTHER WORD ON THE SITE — rewrite any of these to taste.
