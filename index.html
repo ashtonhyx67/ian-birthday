@@ -1085,11 +1085,29 @@ let pics=[];
 function drawPics(){
   const r=$('rail');updateCounts();
   if(!pics.length){r.innerHTML='<p class="empty">'+esc(word('noPhotos','The picture desk is empty.'))+'</p>';return}
-  r.innerHTML=pics.map((p,i)=>'<figure class="frame"><div class="halftone"><img src="'+p.src+'" alt="" loading="lazy"></div>'+
+  /* No loading="lazy" here on purpose. The rail is built while this page is
+     still display:none, and Chrome then never gets round to fetching lazy
+     images once it is shown — every frame stays blank. There are only ever a
+     handful of pictures, so they load eagerly. */
+  r.innerHTML=pics.map((p,i)=>'<figure class="frame"><div class="halftone"><img src="'+esc(p.src)+'" alt=""></div>'+
     '<figcaption class="cap">Plate '+(i+1)+' — '+esc(p.cap||'From the archives')+'</figcaption></figure>').join('');
 }
+/* CONFIG.photos entries may be either a plain path/URL or {src, cap} so the
+   pictures that ship with the site can carry their own captions:
+     photos: [
+       "photos/beach.jpg",
+       {src: "photos/party.jpg", cap: "The night of the great cake incident"}
+     ]                                                                        */
+function normPhoto(p){
+  if(!p)return null;
+  if(typeof p==='string')return p.trim()?{src:p.trim(),cap:''}:null;
+  if(p.src)return {src:p.src,cap:p.cap||''};
+  return null;
+}
 async function loadPics(){
-  pics=CONFIG.photos.map(u=>({src:u,cap:''}));
+  /* first the ones baked into the site — everybody sees these */
+  pics=(CONFIG.photos||[]).map(normPhoto).filter(Boolean);
+  /* then anything added in the newsroom, which lives on this device only */
   const ids=(await get(PKEY))||[];
   for(const id of ids){const d=await get('photo_'+id);if(d)pics.push({id,src:d.src||d,cap:d.cap||''})}
   drawPics();
@@ -1145,6 +1163,14 @@ function renderLock(msg){
   $('pw').onkeydown=e=>{if(e.key==='Enter')try_()};
   function try_(){ if($('pw').value===CONFIG.adminPassword){authed=true;renderAdmin()} else renderLock('Wrong password. The presses stay locked.') }
 }
+
+/* Said in both working tabs, because it is the one thing that surprises people:
+   the newsroom writes to THIS browser, not to the website. */
+const DEVICE_WARNING=
+  '<p class="note" style="border-left:3px solid var(--red);padding:8px 0 8px 11px;margin:0 0 16px">'+
+  'Saved on <b style="color:var(--red)">this device only</b>. Visitors to the site will not see any of it '+
+  'until you publish: Backup tab &rarr; Download the backup, then run '+
+  '<b>node tools/publish-content.mjs</b> and push.</p>';
 
 function renderAdmin(){
   panel.innerHTML='<h3>Newsroom</h3><p class="note">Anything you add here appears on the public page.</p>'+
@@ -1264,7 +1290,8 @@ async function backupTab(){
 }
 
 function letterTab(){
-  $('tabBody').innerHTML='<input id="aName" maxlength="40" placeholder="Who it is from">'+
+  $('tabBody').innerHTML=DEVICE_WARNING+
+    '<input id="aName" maxlength="40" placeholder="Who it is from">'+
     '<textarea id="aText" maxlength="900" placeholder="The letter itself…"></textarea>'+
     '<button class="btn" id="aAdd">Publish letter</button><p class="status" id="aSt"></p>'+
     '<div class="mini" id="aList"></div>';
@@ -1294,7 +1321,8 @@ function letterTab(){
 }
 
 function pictureTab(){
-  $('tabBody').innerHTML='<label class="drop" id="drop"><input type="file" id="file" accept="image/*" multiple hidden>Tap to add photos — or drag them here</label>'+
+  $('tabBody').innerHTML=DEVICE_WARNING+
+    '<label class="drop" id="drop"><input type="file" id="file" accept="image/*" multiple hidden>Tap to add photos — or drag them here</label>'+
     '<input id="cap" maxlength="60" placeholder="Caption for the next upload (optional)">'+
     '<p class="status" id="pSt"></p><div class="thumbs" id="thumbs"></div>';
   thumbs();
