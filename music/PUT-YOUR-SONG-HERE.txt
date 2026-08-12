@@ -1,18 +1,25 @@
-BACKGROUND MUSIC
-================
+BACKGROUND MUSIC — TWO SONGS
+============================
 
-Right now the site plays a soft acoustic-guitar loop that it makes up by
-itself — there is no file involved, so nothing can go missing.
+The site plays one song everywhere, and a second song on the picture page.
+Walking onto page three fades one out and the other in; walking off fades
+back, and the first song carries on from where it was.
 
-If you would rather it played a real song:
+  song.mp3     the main song, heard on every page      <- already here
+  photos.mp3   the picture page's own song             <- drop yours in here
 
-  1. Drop the audio file into this "music" folder.
-  2. Rename it to           song.mp3
-     (or keep its own name and change the "music:" line near the top of
-      index.html to match, e.g.  music: "music/whatever-you-called-it.mp3")
+To add the picture-page song:
+
+  1. Put the audio file in this folder.
+  2. Rename it to        photos.mp3
+     (or keep its own name and change the "musicPhotos:" line near the top
+      of index.html to match)
   3. Refresh the page.
 
-mp3, m4a, ogg and wav all work. If the file is missing or will not play,
-the page quietly goes back to the guitar loop, so nothing ever breaks.
+mp3, m4a, ogg and wav all work.
 
-Volume lives on the "musicVolume:" line in index.html (0 to 1).
+If photos.mp3 is missing, nothing switches — the main song simply plays
+through the picture page as well. If song.mp3 is missing too, the page falls
+back to a soft acoustic guitar loop it generates itself. It is never silent.
+
+Volume for both lives on the "musicVolume:" line in index.html (0 to 1).

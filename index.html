@@ -42,6 +42,14 @@ const CONFIG = {
   music:        "music/song.mp3",
   musicVolume:  0.5,                     // 0 (silent) – 1 (loud)
   musicOnByDefault: true,                // false = starts muted, reader opts in
+
+  /* A second song, just for the picture page. Walking onto page three fades
+     one out and the other in; walking off fades back, and the first song
+     carries on from where it was rather than starting again.
+     Drop the file into the music folder the same way. Leave this as "" —
+     or point it at a file that is not there — and the whole site simply
+     keeps the one song. */
+  musicPhotos:  "music/photos.mp3",
   photos: [
       "photos/photo_2026-08-12_20-04-51.jpg",
       "photos/photo_2026-08-12_20-05-14.jpg",
@@ -116,8 +124,7 @@ const CONFIG = {
     /* page three — the photos */
     photosTagline:     "Page Three  ·  Pictures",
     toMessagesButton:  "The Messages →",
-    photosHeading:     "The Picture Page",
-    photosStandfirst:  "From the archives · Rolling by itself — touch to take over",
+    /* the picture page carries no heading and no standfirst — just pictures */
     noPhotos:          "The picture desk is empty."
   }
 };
@@ -713,8 +720,8 @@ input:focus,textarea:focus{outline:2px solid var(--red);outline-offset:0}
     </div>
 
     <div class="railwrap">
-      <div class="sechead"><h2 data-txt="photosHeading">The Picture Page</h2></div>
-      <p class="standfirst" data-txt="photosStandfirst">From the archives &middot; Rolling by itself &mdash; touch to take over</p>
+      <!-- No heading and no standfirst here on purpose: the pictures speak for
+           themselves and the reel is the only thing on this page. -->
       <div class="rail" id="rail"></div>
       <div class="railnav"><button id="prev">&larr; Earlier</button><button id="next">Later &rarr;</button></div>
     </div>
@@ -772,6 +779,283 @@ if(LEAD){
   $('storySection').style.display='none';
   $('lettersHead').style.marginTop='0';
 }
+
+/* ── BACKGROUND MUSIC ─────────────────────────────────────────────────────
+   Two songs. CONFIG.music plays across the paper; CONFIG.musicPhotos belongs
+   to the picture page alone, and walking on and off page three crossfades
+   between them. Neither ever restarts on a page turn — the site does not
+   reload, the screens just swap — so the main song picks up mid-bar exactly
+   where it was left.
+
+   If the picture page has no song of its own, nothing switches and the main
+   one plays straight through. Silence is never an outcome.
+
+   Two engines, picked automatically:
+     • the FILE engine, if CONFIG.music points at an audio file that loads;
+     • otherwise the GUITAR engine, which fingerpicks a slow four-chord loop
+       out of thin air with the Web Audio API. No file, no download, and it
+       never plays the same bar twice in quite the same way.
+
+   Browsers will not let a page make noise before the reader has touched it,
+   so we wait for the first tap, click or key press and start there.
+   ───────────────────────────────────────────────────────────────────────── */
+const Music=(function(){
+  const KEY='wall_music_on';
+  const VOL=Math.max(0,Math.min(1,CONFIG.musicVolume===undefined?0.5:CONFIG.musicVolume));
+  const btn=$('musicBtn'),lbl=$('musicLbl');
+  let want=CONFIG.musicOnByDefault!==false;
+  try{const v=localStorage.getItem(KEY);if(v!==null)want=(v==='1')}catch(e){}
+  if(matchMedia('(prefers-reduced-motion:reduce)').matches){/* still fine to play */}
+
+  /* TRACKS.main / TRACKS.photos, each one of:
+       undefined — still working out whether the file is there
+       false     — no such song; fall back to the main one
+       {…}       — a ready engine                                        */
+  const TRACKS={};
+  let track='main',            // the song the current page is asking for
+      sounding=null,           // {key,engine} actually making noise
+      playing=false,armed=false,touched=false,lastError=null;
+
+  /* ── engine one: a real audio file ── */
+  function fileEngine(a,onBlocked){
+    let fade=null;
+    const ramp=(to,ms)=>{
+      clearInterval(fade);const from=a.volume,t0=performance.now();
+      fade=setInterval(()=>{
+        const k=Math.min(1,(performance.now()-t0)/ms);
+        a.volume=Math.max(0,Math.min(1,from+(to-from)*k));
+        if(k>=1){clearInterval(fade);if(to===0)a.pause()}
+      },40);
+    };
+    return{
+      kind:'file',
+      get state(){return a.paused?'paused':'playing '+a.currentTime.toFixed(1)+'s of '+(a.duration||0).toFixed(0)+'s'},
+      start(){
+        const p=a.play();
+        if(p&&p.catch)p.catch(e=>{
+          lastError=e&&(e.name+': '+e.message);
+          /* Only a NotAllowedError is the browser saying no; wait for another
+             tap in that case. An AbortError means WE faded this song out
+             before it had got going — which is exactly what a crossfade does,
+             and treating that as a refusal would silence the whole site. */
+          if(e&&e.name==='NotAllowedError'&&onBlocked)onBlocked();
+        });
+        ramp(VOL,1200);
+      },
+      stop(){ramp(0,600)}
+    };
+  }
+
+  /* ── engine two: a guitar built out of maths ──
+     Each note is a Karplus–Strong plucked string: a short burst of noise
+     chasing its own tail round a delay line the length of one wavelength,
+     losing a little brightness each lap. That is genuinely how a plucked
+     string decays, which is why it sounds like nylon and not like a beep. */
+  function guitarEngine(onBlocked){
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC)return null;
+    let ctx=null,master=null,timer=null,next=0,bar=0;
+    const BEAT=0.34;                                   // eighth note, ~88bpm feel
+    const CHORDS=[                                     // C · G · Am · F
+      [48,52,55,60,64],[43,47,50,55,59],[45,52,57,60,64],[41,45,48,53,57]
+    ];
+    const PICK=[0,2,4,3,1,4,2,3];                      // travis-ish picking order
+    const hz=m=>440*Math.pow(2,(m-69)/12);
+
+    function pluck(freq,at,vel){
+      const dur=0.022,n=Math.ceil(ctx.sampleRate*dur);
+      const buf=ctx.createBuffer(1,n,ctx.sampleRate),d=buf.getChannelData(0);
+      for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n);
+      const src=ctx.createBufferSource();src.buffer=buf;
+      const delay=ctx.createDelay(0.2);delay.delayTime.value=1/freq;
+      const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=2400;
+      const fb=ctx.createGain();fb.gain.value=0.957;
+      const body=ctx.createBiquadFilter();body.type='peaking';body.frequency.value=210;body.gain.value=5;
+      const out=ctx.createGain();out.gain.value=vel;
+      src.connect(delay);delay.connect(lp);lp.connect(fb);fb.connect(delay);
+      delay.connect(body);body.connect(out);out.connect(master);
+      out.gain.setValueAtTime(vel,at);
+      out.gain.setTargetAtTime(0.0001,at+1.9,0.55);
+      src.start(at);src.stop(at+dur);
+      src.onended=()=>setTimeout(()=>{
+        try{src.disconnect();delay.disconnect();lp.disconnect();fb.disconnect();body.disconnect();out.disconnect()}catch(e){}
+      },4500);
+    }
+
+    let beat=0;                                        // which eighth of the bar
+    function schedule(){
+      while(next<ctx.currentTime+1.4){
+        const chord=CHORDS[bar%CHORDS.length];
+        const m=chord[PICK[beat]]+(Math.random()<0.12?12:0);   // the odd note an octave up
+        pluck(hz(m),next,(beat===0?0.5:0.3)*(0.85+Math.random()*0.3));
+        if(beat===0)pluck(hz(chord[0]-12),next,0.34);          // a low root to lean on
+        next+=BEAT;
+        beat++;
+        if(beat===8){beat=0;bar++}
+      }
+    }
+
+    return{
+      kind:'guitar',
+      get state(){return ctx?ctx.state:'idle'},
+      start(){
+        if(!ctx){
+          ctx=new AC();
+          master=ctx.createGain();master.gain.value=0.0001;
+          const warm=ctx.createBiquadFilter();warm.type='lowpass';warm.frequency.value=5200;
+          master.connect(warm);warm.connect(ctx.destination);
+        }
+        if(ctx.state==='suspended'){
+          const p=ctx.resume();
+          if(p&&p.catch)p.catch(()=>{if(onBlocked)onBlocked()});
+          /* some browsers resolve the promise and stay suspended anyway */
+          setTimeout(()=>{if(ctx.state!=='running'&&onBlocked)onBlocked()},400);
+        }
+        next=Math.max(next,ctx.currentTime+0.15);
+        master.gain.cancelScheduledValues(ctx.currentTime);
+        master.gain.setValueAtTime(Math.max(0.0001,master.gain.value),ctx.currentTime);
+        master.gain.linearRampToValueAtTime(VOL*0.5,ctx.currentTime+1.4);
+        clearInterval(timer);schedule();timer=setInterval(schedule,250);
+      },
+      stop(){
+        if(!ctx)return;
+        clearInterval(timer);timer=null;
+        master.gain.cancelScheduledValues(ctx.currentTime);
+        master.gain.setValueAtTime(master.gain.value,ctx.currentTime);
+        master.gain.linearRampToValueAtTime(0.0001,ctx.currentTime+0.7);
+        setTimeout(()=>{if(!timer&&ctx.state==='running')ctx.suspend()},900);  // stop burning battery
+      }
+    };
+  }
+
+  /* Which engine are we using? Decided before anybody taps anything, so the
+     first tap can start the sound straight away.
+
+     The question we care about is "is the song actually there?", NOT "has it
+     finished buffering?" — a four-megabyte file on a phone can take a while,
+     and a browser will not even begin fetching it while the tab sits in the
+     background. So we ask the server directly with a HEAD request: a real
+     answer means we commit to the file and wait for it however long it takes;
+     a 404 (missing, renamed, wrong folder) means the file is not coming.
+
+     `spare` is what happens when the file is not there. The main song falls
+     back to the guitar, because the site must never be silent; the picture
+     page falls back to `false`, meaning "no song of my own" — the main one
+     just keeps playing through page three. */
+  function choose(key,src,spare){
+    src=(src||'').trim();
+    const settle=e=>{
+      if(TRACKS[key]!==undefined)return;
+      TRACKS[key]=e;
+      if(playing)apply();                 // it may be the one we are waiting for
+    };
+    if(!src){settle(spare==='guitar'?guitarEngine(blocked):false);return}
+
+    const a=new Audio();a.loop=true;a.preload='auto';a.volume=0;
+    const useFile =()=>settle(fileEngine(a,blocked));
+    const giveUp  =()=>settle(spare==='guitar'?guitarEngine(blocked):false);
+
+    a.addEventListener('canplay',useFile);
+    a.addEventListener('error',()=>{
+      const e=TRACKS[key];
+      if(e&&e.kind==='file'){                          // it broke after we picked it
+        if(sounding&&sounding.engine===e)sounding=null;
+        TRACKS[key]=undefined;giveUp();
+        if(playing)apply();
+      }else giveUp();
+    });
+    a.src=src;
+    try{a.load()}catch(e){giveUp()}
+
+    if(location.protocol==='file:'){
+      /* opened straight off the disk — no server to ask, so let the audio
+         element's own events decide, with a long stop-gap for silence */
+      setTimeout(()=>{if(TRACKS[key]===undefined&&a.readyState===0)giveUp()},15000);
+    }else{
+      fetch(src,{method:'HEAD'})
+        .then(r=>{r.ok?useFile():giveUp()})
+        .catch(()=>{setTimeout(()=>{if(TRACKS[key]===undefined&&a.readyState===0)giveUp()},15000)});
+    }
+  }
+
+  function paint(){
+    btn.setAttribute('aria-pressed',want?'true':'false');
+    btn.title=want?'Music on — tap for quiet':'Music off — tap to play';
+    if(lbl)lbl.textContent=want?'Music':'Muted';
+  }
+
+  /* ── which of the two songs should be sounding right now ──
+     `track` is what the site is asking for; `sounding` is what is actually
+     playing. They differ for a moment during a crossfade, and permanently if
+     the picture page has no song of its own — in which case we simply stay on
+     the main one rather than dropping into silence. */
+  function wanted(){
+    const e=TRACKS[track];
+    if(e)return{key:track,engine:e};                    // that song is ready
+    return{key:'main',engine:TRACKS.main||null};        // missing, or still deciding
+  }
+  function apply(){
+    const t=playing?wanted():null;
+    if(sounding&&(!t||t.engine!==sounding.engine)){sounding.engine.stop();sounding=null}
+    if(t&&t.engine&&!sounding){sounding=t;t.engine.start()}
+  }
+  function play(){ if(playing)return;playing=true;apply() }
+  function hush(){ if(!playing)return;playing=false;apply() }
+  /* the browser turned us down — go back to waiting for a tap */
+  function blocked(){ playing=false;sounding=null;armed=false;arm() }
+
+  /* the router calls this on every page turn */
+  function forScreen(id){
+    const t=(id==='screen-photos')?'photos':'main';
+    if(t===track)return;
+    track=t;apply();
+  }
+
+  /* the first touch anywhere on the page is what buys us permission */
+  function arm(){
+    if(armed)return;armed=true;
+    const go=()=>{off();touched=true;if(want)play()};
+    const off=()=>{
+      document.removeEventListener('pointerdown',go);
+      document.removeEventListener('keydown',go);
+      document.removeEventListener('touchstart',go);
+    };
+    document.addEventListener('pointerdown',go);
+    document.addEventListener('keydown',go);
+    document.addEventListener('touchstart',go);
+  }
+
+  btn.addEventListener('click',e=>{
+    e.stopPropagation();
+    touched=true;
+    want=!want;
+    try{localStorage.setItem(KEY,want?'1':'0')}catch(e){}
+    paint();
+    want?play():hush();
+  });
+
+  /* a tab left in the background need not sing to an empty room */
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden)hush(); else if(want&&touched)play();
+  });
+
+  paint();
+  /* both songs are sized up during the password screen, so the first tap can
+     start immediately and page three never has to wait to change tune */
+  choose('main',CONFIG.music,'guitar');
+  choose('photos',CONFIG.musicPhotos,false);
+  arm();
+
+  /* handy from the console: Music.status */
+  return{play,hush,forScreen,get on(){return want},
+         get status(){
+           const s=sounding&&sounding.engine;
+           return{wanted:want,playing,asking:track,
+                  sounding:sounding&&sounding.key,engine:s&&s.kind,state:s&&s.state,
+                  photosTrack:TRACKS.photos===false?'none — stays on the main song':CONFIG.musicPhotos,
+                  lastError};
+         }};
+})();
 
 /* ── THE REEL — the picture page turns itself ───────────────────────────────
    The pictures are laid out twice, end to end, and the rail creeps sideways a
@@ -838,6 +1122,7 @@ function showScreen(id){
   $('hot').classList.toggle('on',id!=='screen-gate');
   $('musicBtn').classList.toggle('on',id!=='screen-gate');
   id==='screen-photos'?Reel.start():Reel.stop();
+  Music.forScreen(id);        // page three has a song of its own
 }
 /* works for buttons and for the SVG cake tiers alike */
 document.querySelectorAll('[data-go]').forEach(el=>{
@@ -1516,218 +1801,6 @@ function pictureTab(){
   }
 }
 
-/* ── BACKGROUND MUSIC ─────────────────────────────────────────────────────
-   One sound for the whole site. Nothing here ever stops when you turn a
-   page, because the site never actually reloads — the screens just swap.
-
-   Two engines, picked automatically:
-     • the FILE engine, if CONFIG.music points at an audio file that loads;
-     • otherwise the GUITAR engine, which fingerpicks a slow four-chord loop
-       out of thin air with the Web Audio API. No file, no download, and it
-       never plays the same bar twice in quite the same way.
-
-   Browsers will not let a page make noise before the reader has touched it,
-   so we wait for the first tap, click or key press and start there.
-   ───────────────────────────────────────────────────────────────────────── */
-const Music=(function(){
-  const KEY='wall_music_on';
-  const VOL=Math.max(0,Math.min(1,CONFIG.musicVolume===undefined?0.5:CONFIG.musicVolume));
-  const btn=$('musicBtn'),lbl=$('musicLbl');
-  let want=CONFIG.musicOnByDefault!==false;
-  try{const v=localStorage.getItem(KEY);if(v!==null)want=(v==='1')}catch(e){}
-  if(matchMedia('(prefers-reduced-motion:reduce)').matches){/* still fine to play */}
-
-  let engine=null,playing=false,armed=false,touched=false,lastError=null;
-
-  /* ── engine one: a real audio file ── */
-  function fileEngine(a,onBlocked){
-    let fade=null;
-    const ramp=(to,ms)=>{
-      clearInterval(fade);const from=a.volume,t0=performance.now();
-      fade=setInterval(()=>{
-        const k=Math.min(1,(performance.now()-t0)/ms);
-        a.volume=Math.max(0,Math.min(1,from+(to-from)*k));
-        if(k>=1){clearInterval(fade);if(to===0)a.pause()}
-      },40);
-    };
-    return{
-      kind:'file',
-      get state(){return a.paused?'paused':'playing '+a.currentTime.toFixed(1)+'s of '+(a.duration||0).toFixed(0)+'s'},
-      start(){
-        const p=a.play();
-        /* the browser can still refuse — if it does, wait for another tap
-           rather than leaving the reader in silence with the switch on */
-        if(p&&p.catch)p.catch(e=>{lastError=e&&(e.name+': '+e.message);if(onBlocked)onBlocked()});
-        ramp(VOL,1200);
-      },
-      stop(){ramp(0,600)}
-    };
-  }
-
-  /* ── engine two: a guitar built out of maths ──
-     Each note is a Karplus–Strong plucked string: a short burst of noise
-     chasing its own tail round a delay line the length of one wavelength,
-     losing a little brightness each lap. That is genuinely how a plucked
-     string decays, which is why it sounds like nylon and not like a beep. */
-  function guitarEngine(onBlocked){
-    const AC=window.AudioContext||window.webkitAudioContext;
-    if(!AC)return null;
-    let ctx=null,master=null,timer=null,next=0,bar=0;
-    const BEAT=0.34;                                   // eighth note, ~88bpm feel
-    const CHORDS=[                                     // C · G · Am · F
-      [48,52,55,60,64],[43,47,50,55,59],[45,52,57,60,64],[41,45,48,53,57]
-    ];
-    const PICK=[0,2,4,3,1,4,2,3];                      // travis-ish picking order
-    const hz=m=>440*Math.pow(2,(m-69)/12);
-
-    function pluck(freq,at,vel){
-      const dur=0.022,n=Math.ceil(ctx.sampleRate*dur);
-      const buf=ctx.createBuffer(1,n,ctx.sampleRate),d=buf.getChannelData(0);
-      for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n);
-      const src=ctx.createBufferSource();src.buffer=buf;
-      const delay=ctx.createDelay(0.2);delay.delayTime.value=1/freq;
-      const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=2400;
-      const fb=ctx.createGain();fb.gain.value=0.957;
-      const body=ctx.createBiquadFilter();body.type='peaking';body.frequency.value=210;body.gain.value=5;
-      const out=ctx.createGain();out.gain.value=vel;
-      src.connect(delay);delay.connect(lp);lp.connect(fb);fb.connect(delay);
-      delay.connect(body);body.connect(out);out.connect(master);
-      out.gain.setValueAtTime(vel,at);
-      out.gain.setTargetAtTime(0.0001,at+1.9,0.55);
-      src.start(at);src.stop(at+dur);
-      src.onended=()=>setTimeout(()=>{
-        try{src.disconnect();delay.disconnect();lp.disconnect();fb.disconnect();body.disconnect();out.disconnect()}catch(e){}
-      },4500);
-    }
-
-    let beat=0;                                        // which eighth of the bar
-    function schedule(){
-      while(next<ctx.currentTime+1.4){
-        const chord=CHORDS[bar%CHORDS.length];
-        const m=chord[PICK[beat]]+(Math.random()<0.12?12:0);   // the odd note an octave up
-        pluck(hz(m),next,(beat===0?0.5:0.3)*(0.85+Math.random()*0.3));
-        if(beat===0)pluck(hz(chord[0]-12),next,0.34);          // a low root to lean on
-        next+=BEAT;
-        beat++;
-        if(beat===8){beat=0;bar++}
-      }
-    }
-
-    return{
-      kind:'guitar',
-      get state(){return ctx?ctx.state:'idle'},
-      start(){
-        if(!ctx){
-          ctx=new AC();
-          master=ctx.createGain();master.gain.value=0.0001;
-          const warm=ctx.createBiquadFilter();warm.type='lowpass';warm.frequency.value=5200;
-          master.connect(warm);warm.connect(ctx.destination);
-        }
-        if(ctx.state==='suspended'){
-          const p=ctx.resume();
-          if(p&&p.catch)p.catch(()=>{if(onBlocked)onBlocked()});
-          /* some browsers resolve the promise and stay suspended anyway */
-          setTimeout(()=>{if(ctx.state!=='running'&&onBlocked)onBlocked()},400);
-        }
-        next=Math.max(next,ctx.currentTime+0.15);
-        master.gain.cancelScheduledValues(ctx.currentTime);
-        master.gain.setValueAtTime(Math.max(0.0001,master.gain.value),ctx.currentTime);
-        master.gain.linearRampToValueAtTime(VOL*0.5,ctx.currentTime+1.4);
-        clearInterval(timer);schedule();timer=setInterval(schedule,250);
-      },
-      stop(){
-        if(!ctx)return;
-        clearInterval(timer);timer=null;
-        master.gain.cancelScheduledValues(ctx.currentTime);
-        master.gain.setValueAtTime(master.gain.value,ctx.currentTime);
-        master.gain.linearRampToValueAtTime(0.0001,ctx.currentTime+0.7);
-        setTimeout(()=>{if(!timer&&ctx.state==='running')ctx.suspend()},900);  // stop burning battery
-      }
-    };
-  }
-
-  /* Which engine are we using? Decided before anybody taps anything, so the
-     first tap can start the sound straight away.
-
-     The question we care about is "is the song actually there?", NOT "has it
-     finished buffering?" — a four-megabyte file on a phone can take a while,
-     and a browser will not even begin fetching it while the tab sits in the
-     background. So we ask the server directly with a HEAD request: a real
-     answer means we commit to the file and wait for it however long it takes;
-     a 404 (missing, renamed, wrong folder) hands over to the guitar. If the
-     file turns out to be unplayable later, the guitar takes over then. */
-  function choose(){
-    const src=(CONFIG.music||'').trim();
-    if(!src){engine=guitarEngine(blocked);return}
-    const a=new Audio();a.loop=true;a.preload='auto';a.volume=0;
-    let settled=false;
-    const useFile=()=>{if(settled)return;settled=true;engine=fileEngine(a,blocked);if(playing)engine.start()};
-    const useGuitar=()=>{if(settled)return;settled=true;engine=guitarEngine(blocked);if(playing&&engine)engine.start()};
-
-    a.addEventListener('canplay',useFile);
-    a.addEventListener('error',()=>{
-      if(settled&&engine&&engine.kind==='file'){       // it broke after we picked it
-        const was=playing;hush();settled=false;engine=null;useGuitar();if(was)play();
-      }else useGuitar();
-    });
-    a.src=src;
-    try{a.load()}catch(e){useGuitar()}
-
-    if(location.protocol==='file:'){
-      /* opened straight off the disk — no server to ask, so let the audio
-         element's own events decide, with a long stop-gap for silence */
-      setTimeout(()=>{if(!settled&&a.readyState===0)useGuitar()},15000);
-    }else{
-      fetch(src,{method:'HEAD'})
-        .then(r=>{r.ok?useFile():useGuitar()})
-        .catch(()=>{setTimeout(()=>{if(!settled&&a.readyState===0)useGuitar()},15000)});
-    }
-  }
-
-  function paint(){
-    btn.setAttribute('aria-pressed',want?'true':'false');
-    btn.title=want?'Music on — tap for quiet':'Music off — tap to play';
-    if(lbl)lbl.textContent=want?'Music':'Muted';
-  }
-  function play(){ if(playing)return;playing=true;if(engine)engine.start() }
-  function hush(){ if(!playing)return;playing=false;if(engine)engine.stop() }
-  /* the browser turned us down — go back to waiting for a tap */
-  function blocked(){ playing=false;armed=false;arm() }
-
-  /* the first touch anywhere on the page is what buys us permission */
-  function arm(){
-    if(armed)return;armed=true;
-    const go=()=>{off();touched=true;if(want)play()};
-    const off=()=>{
-      document.removeEventListener('pointerdown',go);
-      document.removeEventListener('keydown',go);
-      document.removeEventListener('touchstart',go);
-    };
-    document.addEventListener('pointerdown',go);
-    document.addEventListener('keydown',go);
-    document.addEventListener('touchstart',go);
-  }
-
-  btn.addEventListener('click',e=>{
-    e.stopPropagation();
-    touched=true;
-    want=!want;
-    try{localStorage.setItem(KEY,want?'1':'0')}catch(e){}
-    paint();
-    want?play():hush();
-  });
-
-  /* a tab left in the background need not sing to an empty room */
-  document.addEventListener('visibilitychange',()=>{
-    if(document.hidden)hush(); else if(want&&touched)play();
-  });
-
-  paint();choose();arm();
-  /* handy from the console: Music.status */
-  return{play,hush,get on(){return want},
-         get status(){return{wanted:want,playing,engine:engine&&engine.kind,
-                             state:engine&&engine.state,source:CONFIG.music,lastError}}};
-})();
 
 /* nothing is read or written until the store has been chosen */
 (async function boot(){
