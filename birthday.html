@@ -1,0 +1,1357 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Birthday Gazette</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Special+Elite&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+
+<!-- ══════════════════════════════════════════════════════════
+     EDIT ONLY THIS BLOCK. Everything else runs itself.
+     ══════════════════════════════════════════════════════════ -->
+<script>
+const CONFIG = {
+  name:        "Ian",                    // goes in the giant headline
+  paperName:   "The big 17",        // masthead
+  age:         "17",                     // "" to hide
+  city:        "London",              // dateline
+  price:       "One Slice of Cake",      // fake newspaper price, keep it silly
+
+  headline:    "Local Legend Turns 17", 
+
+  // The lead story is switched OFF. To bring it back, delete the two slashes
+  // below and write your message. Use \n\n where you want a new paragraph.
+  // leadStory: "First paragraph.\n\nSecond paragraph.",
+
+  sitePassword:  "birthday",             // ← change this. Guests need this to enter the site at all.
+  adminPassword: "cakepin",              // ← change this. Used to unlock the hidden editorial panel.
+  photos: [],                            // optional starting image URLs
+
+  /* Letters baked into the file itself — these travel with it anywhere you
+     send it and can never be lost. Anything you write in the newsroom is
+     saved in your browser straight away; use the newsroom's Backup tab to
+     copy it into this list when you want it to be permanent. */
+  messages: [
+    // {n: "Name",  t: "Their message. Line breaks are fine."},
+  ],
+
+  /* ══════════════════════════════════════════════════════════════
+     EVERY OTHER WORD ON THE SITE — rewrite any of these to taste.
+     Keep the "quotes" and the comma at the end of each line.
+     ══════════════════════════════════════════════════════════════ */
+  words: {
+    /* the password screen */
+    gateKicker:        "Restricted Circulation",
+    gateTitle:         "Enter Password",
+    gateHint:          "This edition is for invited readers only.",
+    gatePlaceholder:   "Password",
+    gateButton:        "Unlock the paper",
+    gateWrong:         "Wrong password. Try again.",
+  
+
+    /* the envelope on the front page */
+    envKicker:         "Special Delivery",
+    envTitle:          "A parcel has arrived",
+    envHint:           "Tap the envelope to open it",
+    envStampTop:       "First",
+    envStampBottom:    "Class",
+    envTo:             "To:",                          // the addressee line, name is added after it
+
+    /* the cake */
+    icingTop:          "Happy Birthday",               // piped on the top tier
+    icingTopSub:       "Baked this morning",
+    icingBottom:       "Many Happy Returns",           // piped on the bottom tier
+    icingBottomSub:    "Serves everyone who loves you",
+
+    /* the two cards either side of the cake */
+    tierMessages:      "The Messages",                 // left-hand card
+    tierMessagesSub:   "Page Two · Tap to read",
+    tierPhotos:        "The Photos",                   // right-hand card
+    tierPhotosSub:     "Page Three · Tap to look",
+    cardKicker:        "Turn to",
+    cardCta:           "Read on →",
+    cakeHint:          "Tap the candles to blow them out.",
+    figLit:            "Fig. 1 — The candles, presently alight.",
+    figOut:            "Fig. 2 — Wish granted.",
+    blowButton:        "Make a wish & blow out the candles",
+    relightButton:     "Relight the candles",
+    stamp:             "Wish Granted",
+
+    /* page two — the messages */
+    messagesTagline:   "Page Two  ·  Letters",
+    backButton:        "← Back to the cake",
+    toPhotosButton:    "The Photos →",
+    storyHeading:      "From the Editor",
+    storyStandfirst:   "The lead story · Filed today",
+    lettersHeading:    "Letters to the Editor",
+    lettersStandfirst: "Sealed on arrival · Tap a letter to open it",
+    noLetters:         "No letters yet — the editor is working on it.",
+    messagesFooter:    "With love from everyone who wrote in",
+
+    /* page three — the photos */
+    photosTagline:     "Page Three  ·  Pictures",
+    toMessagesButton:  "The Messages →",
+    photosHeading:     "The Picture Page",
+    photosStandfirst:  "From the archives · Drag sideways",
+    noPhotos:          "The picture desk is empty."
+  }
+};
+</script>
+
+<style>     
+:root{
+  --paper:#EDE4CE; --paper2:#E4D9BE; --ink:#1C1814; --ink2:#584D3F;
+  --red:#9E2B25; --blue:#2E4057; --rule:rgba(28,24,20,.85); --hair:rgba(28,24,20,.26);
+  --masthead:'UnifrakturMaguntia',Georgia,serif;
+  --head:'Playfair Display',Georgia,'Times New Roman',serif;
+  --body:'Libre Baskerville',Georgia,serif;
+  --type:'Special Elite','Courier New',monospace;
+  --pad:clamp(14px,3.2vw,40px);
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--paper)}
+body{color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6;-webkit-text-size-adjust:100%}
+::selection{background:var(--red);color:var(--paper)}
+
+/* ─── every screen fills the whole window, edge to edge ─── */
+.screen{position:fixed;inset:0;display:none;background:var(--paper)}
+.screen.active{display:block}
+.sheet{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  padding:var(--pad) var(--pad) calc(var(--pad) * .7);overflow:hidden;
+  padding-left:max(var(--pad),env(safe-area-inset-left));padding-right:max(var(--pad),env(safe-area-inset-right));
+}
+.sheet>*{width:100%;max-width:1080px;flex:0 0 auto}
+/* Newsprint warmth.
+   The old version drew 1px hairlines on a 3–4px repeat. On a screen running
+   at 125% or 150% display scaling those lines land between physical pixels
+   and beat against the pixel grid, turning the whole page into a visible
+   mesh of dots. Everything here is now a smooth, non-repeating wash, so
+   there is no pattern left to alias — it cannot happen at any zoom or scale.
+   ► To switch the texture off completely, put display:none here. */
+.screen::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;opacity:.9;
+  background-image:
+    radial-gradient(120% 80% at 18% 12%,rgba(120,95,55,.055),transparent 60%),
+    radial-gradient(100% 70% at 82% 78%,rgba(120,95,55,.05),transparent 62%),
+    radial-gradient(80% 60% at 55% 45%,rgba(255,252,240,.35),transparent 70%)}
+.screen::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;
+  background:radial-gradient(130% 70% at 50% 0%,transparent 55%,rgba(90,70,40,.16)),
+             linear-gradient(105deg,rgba(120,95,55,.10),transparent 18%,transparent 82%,rgba(120,95,55,.12))}
+.sheet{z-index:3}
+
+/* ─── hidden admin hotspot ─── */
+#hot{position:fixed;top:0;left:0;width:46px;height:46px;z-index:60;border:0;padding:0;cursor:default;
+  background:transparent;-webkit-tap-highlight-color:transparent;display:none}
+#hot.on{display:block}
+#hot::after{content:"";position:absolute;top:13px;left:13px;width:4px;height:4px;border-radius:50%;background:var(--ink);opacity:.18}
+#hot:focus{outline:none}
+
+/* ─── masthead ─── */
+.masthead{text-align:center}
+.tagline{font-family:var(--type);font-size:.58rem;letter-spacing:.3em;text-transform:uppercase;color:var(--ink2);margin:0}
+.rule{border:0;border-top:2.5px solid var(--rule);margin:8px 0 0}
+.rule.thin{border-top-width:1px;margin:4px 0 0}
+.paper-name{font-family:var(--masthead);font-size:clamp(1.9rem,6.4vw,3.6rem);line-height:1.02;margin:8px 0;
+  letter-spacing:.01em;text-shadow:1.5px 1.5px 0 rgba(28,24,20,.14);overflow-wrap:anywhere}
+.dateline{display:flex;justify-content:space-between;align-items:center;gap:4px 14px;flex-wrap:wrap;
+  font-family:var(--type);font-size:.56rem;letter-spacing:.16em;text-transform:uppercase;padding:6px 2px;color:var(--ink2)}
+.masthead.mini .paper-name{font-size:clamp(1.35rem,4.2vw,2.1rem);margin:6px 0}
+.masthead.mini .tagline{font-size:.54rem}
+
+/* ─── top bar on the inner pages ─── */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px}
+.navbtn{font-family:var(--type);font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;
+  background:transparent;border:1px solid var(--rule);color:var(--ink);padding:9px 15px;cursor:pointer;white-space:nowrap;
+  transition:background .18s,color .18s}
+.navbtn:hover{background:var(--ink);color:var(--paper)}
+.navbtn:active{transform:translateY(1px)}
+.navbtn:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.navbtn.home{border-width:2px}
+
+/* ─── password gate ─── */
+#screen-gate .sheet{justify-content:center}
+.gate{text-align:center;max-width:420px}
+.gate .kicker{font-family:var(--type);font-size:.62rem;letter-spacing:.3em;text-transform:uppercase;color:var(--red);margin:0 0 12px}
+.gate h1{font-family:var(--head);font-weight:900;font-size:clamp(1.6rem,6.4vw,2.4rem);text-transform:uppercase;margin:0 0 8px;letter-spacing:-.01em;line-height:1.05}
+.gate p.hint{font-family:var(--type);font-size:.66rem;letter-spacing:.1em;color:var(--ink2);margin:0 0 24px}
+.gate input{text-align:center;margin-bottom:14px}
+.gate .btn{width:100%}
+.gate .status{text-align:center}
+.gate .rule{margin:22px 0 0}
+
+/* ─── front-page headline ─── */
+.lead{text-align:center;margin-top:clamp(8px,1.8vh,20px)}
+.kicker{font-family:var(--type);font-size:.6rem;letter-spacing:.3em;text-transform:uppercase;color:var(--red);margin:0}
+.lead h1{font-family:var(--head);font-weight:900;font-size:clamp(1.5rem,4.6vw,2.9rem);line-height:1;
+  margin:8px 0 0;letter-spacing:-.02em;text-transform:uppercase;text-wrap:balance}
+.lead .name{display:block;font-size:1.12em;color:var(--red)}
+.subhead{font-family:var(--head);font-style:italic;font-weight:700;font-size:clamp(.8rem,1.7vw,1.02rem);
+  max-width:44ch;margin:8px auto 0;color:var(--ink2);line-height:1.45;text-wrap:balance}
+
+/* ─── THE STAGE — holds the envelope, then the cake and its two cards ─── */
+.stage{flex:1 1 auto!important;min-height:0;width:100%;position:relative;display:flex;flex-direction:column;
+  padding:clamp(6px,1.4vh,16px) 0 0}
+
+/* ─── ACT ONE: the big envelope ─── */
+.envstage{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:clamp(8px,1.8vh,20px)}
+.envstage[hidden]{display:none}
+/* the 64vh keeps the envelope's own height in check — it is 1.53× as wide as it is tall */
+.bigenv{flex:0 0 auto;width:min(560px,86vw,64vh);background:transparent;border:0;padding:0;margin:0;
+  position:relative;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:transform .5s cubic-bezier(.22,.9,.3,1),filter .5s ease;
+  filter:drop-shadow(6px 8px 0 rgba(28,24,20,.16))}
+@media(hover:hover){.bigenv:hover{transform:translateY(-7px) rotate(-.6deg);filter:drop-shadow(9px 13px 0 rgba(28,24,20,.22))}}
+.bigenv:active{transform:translateY(-2px)}
+.bigenv:focus{outline:none}
+.bigenv:focus-visible{outline:2px solid var(--red);outline-offset:8px}
+.bigenv svg{width:100%;height:auto;display:block;overflow:visible}
+.bigflap{transform-box:fill-box;transform-origin:50% 0;transition:transform .55s cubic-bezier(.3,.9,.3,1)}
+.bigenv .bigwax{position:absolute;top:56%;left:50%;transform:translate(-50%,-50%);
+  width:clamp(56px,11vw,86px);aspect-ratio:1;border-radius:50%;background:var(--red);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--head);font-weight:900;color:var(--paper);font-size:clamp(1.2rem,3.4vw,2rem);letter-spacing:-.02em;
+  box-shadow:inset 0 0 0 4px rgba(237,228,206,.42),0 2px 6px rgba(28,24,20,.35);
+  transition:transform .35s ease,opacity .3s ease}
+.envlbl{font-family:'Special Elite','Courier New',monospace;font-size:16px;letter-spacing:3px;fill:#584D3F;text-transform:uppercase}
+.envname{font-family:'Playfair Display',Georgia,serif;font-weight:900;font-size:38px;fill:#1C1814;letter-spacing:-.5px}
+.envstamp{font-family:'Special Elite','Courier New',monospace;font-size:13px;letter-spacing:2px;fill:#584D3F;
+  text-anchor:middle;text-transform:uppercase}
+.envhint{font-family:var(--type);font-size:.66rem;letter-spacing:.24em;text-transform:uppercase;color:var(--ink2);
+  margin:0;text-align:center;animation:nudge 2.4s ease-in-out infinite}
+@keyframes nudge{0%,100%{opacity:.55;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+
+/* opening it: flap up, seal off, whole envelope drops away */
+.envstage.go .bigenv{pointer-events:none}
+.envstage.go .bigflap{transform:scaleY(-1)}
+.envstage.go .bigwax{transform:translate(-50%,-50%) scale(.3);opacity:0}
+.envstage.go .bigenv{animation:envaway .75s .3s cubic-bezier(.5,0,.75,0) forwards}
+.envstage.go .envhint{animation:none;opacity:0;transition:opacity .25s}
+@keyframes envaway{to{opacity:0;transform:translateY(46px) scale(.72)}}
+
+/* ─── ACT TWO: cake in the middle, a card either side ─── */
+.reveal{flex:1 1 auto;min-height:0;width:100%;display:grid;align-items:center;
+  grid-template-columns:minmax(0,1fr) minmax(0,2fr) minmax(0,1fr);
+  grid-template-areas:"msg cake pics";gap:clamp(10px,2vw,28px)}
+.reveal[hidden]{display:none}
+.cakecol{grid-area:cake;min-height:0;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.plate{position:relative;flex:1 1 auto;min-height:0;width:100%;display:flex;justify-content:center}
+.cake{width:100%;height:100%;max-width:520px;display:block;overflow:visible}
+.tier .tierfill{fill:var(--paper2);stroke:#1C1814;stroke-width:2.5}
+.tier .icing{font-family:var(--head);font-weight:900;font-size:19px;letter-spacing:1.4px;text-anchor:middle;fill:var(--ink);
+  text-transform:uppercase}
+.tier .icing.sm{font-family:var(--type);font-weight:400;font-size:9px;letter-spacing:2.2px;fill:var(--ink2)}
+.tier{pointer-events:none}
+#candleZone{cursor:pointer;pointer-events:auto}
+#candleZone:focus{outline:none}
+
+/* the cake vaulting out of the envelope */
+.reveal.pop .cakecol{animation:cakepop 1s cubic-bezier(.2,1.5,.34,1) both}
+@keyframes cakepop{
+  0%{opacity:0;transform:translateY(90px) scale(.18) rotate(-6deg)}
+  55%{opacity:1}
+  100%{opacity:1;transform:none}}
+
+/* ─── the two cards ─── */
+.sidecard{grid-area:msg;--tilt:-2.2deg;position:relative;text-align:center;cursor:pointer;
+  max-width:300px;width:100%;justify-self:center;
+  background:var(--paper);border:1px solid var(--rule);outline:3px double var(--rule);outline-offset:4px;
+  padding:clamp(12px,1.8vw,22px) clamp(8px,1.4vw,18px);
+  box-shadow:5px 7px 0 rgba(28,24,20,.16);opacity:0;transform:rotate(var(--tilt));
+  transition:transform .3s cubic-bezier(.22,.9,.3,1),box-shadow .3s ease,background .3s ease}
+.sidecard.right{grid-area:pics;--tilt:2.4deg}
+.sidecard .ck{font-family:var(--type);font-size:.52rem;letter-spacing:.26em;text-transform:uppercase;color:var(--red);margin:0}
+.sidecard h3{font-family:var(--head);font-weight:900;text-transform:uppercase;letter-spacing:.02em;line-height:1.02;
+  font-size:clamp(.95rem,2.1vw,1.5rem);margin:7px 0 0;text-wrap:balance}
+.sidecard .sub{font-family:var(--type);font-size:.53rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink2);
+  margin:8px 0 0;padding-top:8px;border-top:1px solid var(--hair)}
+.sidecard .count{font-family:var(--head);font-style:italic;font-weight:700;color:var(--red);font-size:.8rem;margin:6px 0 0}
+.sidecard .cta{font-family:var(--type);font-size:.52rem;letter-spacing:.2em;text-transform:uppercase;color:var(--ink);
+  margin:10px 0 0;opacity:.75}
+.sidecard .pin{position:absolute;top:-9px;left:50%;width:14px;height:14px;border-radius:50%;background:var(--red);
+  transform:translateX(-50%);box-shadow:inset 0 0 0 2px rgba(237,228,206,.45),0 1px 2px rgba(28,24,20,.4)}
+@media(hover:hover){.sidecard:hover{transform:rotate(var(--tilt)) translateY(-6px) scale(1.03);
+  box-shadow:8px 12px 0 rgba(28,24,20,.24);background:#F2EAD6}}
+.sidecard:active{transform:rotate(var(--tilt)) translateY(-1px)}
+.sidecard:focus{outline-color:var(--red)}
+.reveal.cards .sidecard{animation:cardpop .72s cubic-bezier(.2,1.45,.35,1) both}
+.reveal.cards .sidecard.left{animation-delay:.04s}
+.reveal.cards .sidecard.right{animation-delay:.17s}
+@keyframes cardpop{
+  0%{opacity:0;transform:translateY(34px) scale(.6) rotate(calc(var(--tilt) * -6))}
+  100%{opacity:1;transform:rotate(var(--tilt))}}
+/* once everything has landed the animations step aside so hover works again */
+.reveal.settled .cakecol,.reveal.settled .sidecard{animation:none}
+.reveal.settled .sidecard{opacity:1}
+
+/* ─── confetti ─── */
+#confetti{position:fixed;inset:0;width:100%;height:100%;z-index:40;pointer-events:none;display:none}
+#confetti.on{display:block}
+
+@media(max-width:760px){
+  .reveal{grid-template-columns:1fr 1fr;grid-template-rows:minmax(0,1fr) auto;
+    grid-template-areas:"cake cake" "msg pics";gap:10px 12px}
+  .sidecard{outline-offset:3px;padding:11px 8px}
+  .sidecard h3{font-size:1rem}
+  .sidecard .count,.sidecard .cta{display:none}
+}
+
+.smoke{opacity:0}
+.fl{transform-box:fill-box;transform-origin:50% 100%;animation:flick 1.5s ease-in-out infinite alternate}
+#c1 .fl{animation-delay:.05s}#c2 .fl{animation-delay:.28s}#c3 .fl{animation-delay:.14s}
+@keyframes flick{0%{transform:scaleY(1) rotate(0deg);opacity:1}45%{transform:scaleY(1.1) rotate(-2deg);opacity:.92}
+  100%{transform:scaleY(.94) rotate(2deg);opacity:1}}
+.candle.out .fl{animation:none;opacity:0;transition:opacity .35s}
+.candle .smoke{transition:opacity .8s,transform 1.1s}
+.candle.out .smoke{opacity:.75;transform:translateY(-11px)}
+
+.stamp{position:absolute;top:44%;left:50%;font-family:var(--head);font-weight:900;font-size:clamp(1rem,3.6vw,1.8rem);
+  text-transform:uppercase;letter-spacing:.06em;color:var(--red);border:5px double var(--red);padding:8px 18px;
+  transform:translate(-50%,-50%) rotate(-14deg) scale(2.2);opacity:0;pointer-events:none;white-space:nowrap;z-index:5}
+.stamp.on{opacity:.92;transform:translate(-50%,-50%) rotate(-14deg) scale(1);transition:opacity .12s,transform .3s cubic-bezier(.2,1.7,.4,1)}
+
+.fig{font-family:var(--type);font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;text-align:center;
+  margin:clamp(6px,1.4vh,14px) 0 0;color:var(--ink2)}
+.fig b{color:var(--red);font-weight:400}
+.cakebtns{display:flex;gap:10px;justify-content:center;margin-top:clamp(8px,1.6vh,16px);flex-wrap:wrap}
+.byline{text-align:center;font-family:var(--type);font-size:.58rem;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--ink2);margin:clamp(8px,1.6vh,18px) 0 0}
+
+/* ─── inner page content (scrolls inside the page, never the window) ─── */
+.scrollarea{flex:1 1 auto!important;min-height:0;overflow-y:auto;overscroll-behavior:contain;
+  padding:14px 2px 6px;scrollbar-width:thin;scrollbar-color:rgba(28,24,20,.4) transparent}
+.scrollarea::-webkit-scrollbar{width:8px}
+.scrollarea::-webkit-scrollbar-thumb{background:rgba(28,24,20,.35)}
+
+.cols{text-align:justify;hyphens:auto}
+@media(min-width:860px){.cols{column-count:2;column-gap:40px;column-rule:1px solid var(--hair)}}
+.cols p{margin:0 0 1em}
+.cols p:first-child::first-letter{font-family:var(--head);font-weight:900;float:left;font-size:3.2em;line-height:.78;
+  padding:.06em .1em 0 0;color:var(--red)}
+
+.sechead{display:flex;align-items:center;gap:16px;margin:0 0 10px}
+.sechead::before,.sechead::after{content:"";flex:1;border-top:2.5px solid var(--rule);border-bottom:1px solid var(--rule);height:4px}
+.sechead h2{font-family:var(--head);font-weight:900;text-transform:uppercase;letter-spacing:.1em;
+  font-size:clamp(.95rem,2.6vw,1.3rem);margin:0;white-space:nowrap}
+.standfirst{font-family:var(--type);font-size:.62rem;letter-spacing:.12em;text-transform:uppercase;
+  text-align:center;color:var(--ink2);margin:0 0 18px}
+
+/* ─── letters: one envelope each, all the same size ───────────────────────
+   Closed, every card is exactly --envH tall, so the grid stays aligned.
+   Opening one sets its max-height in JS to the letter's real height, which
+   is what gives the unfold. Only one may be open at a time.
+   ─────────────────────────────────────────────────────────────────────── */
+.letters{--envH:198px;display:grid;grid-template-columns:repeat(auto-fill,minmax(248px,1fr));
+  gap:20px;align-items:start}
+.env{position:relative;min-height:var(--envH);max-height:var(--envH);overflow:hidden;
+  background:var(--paper);border:1px solid var(--rule);
+  transition:max-height .55s cubic-bezier(.22,.85,.25,1),box-shadow .3s ease,transform .3s ease}
+@media(hover:hover){.env:not(.open):hover{transform:translateY(-3px);box-shadow:5px 7px 0 rgba(28,24,20,.16)}}
+.env.open{box-shadow:7px 9px 0 rgba(28,24,20,.26)}
+
+/* the envelope front — a button covering the closed card */
+.face{position:absolute;top:0;left:0;width:100%;height:var(--envH);z-index:3;
+  background:transparent;border:0;padding:0;margin:0;cursor:pointer;display:block;
+  transition:transform .5s cubic-bezier(.45,0,.55,1),opacity .38s ease}
+.env.open .face{transform:translateY(101%);opacity:0;pointer-events:none;transition-delay:.1s}
+.face:focus{outline:none}
+.face:focus-visible{outline:2px solid var(--red);outline-offset:-4px}
+.envart{position:absolute;inset:0;width:100%;height:100%;display:block;overflow:visible}
+.flapart{transform-box:fill-box;transform-origin:50% 0;transition:transform .42s cubic-bezier(.3,.9,.3,1)}
+.env.open .flapart{transform:scaleY(-1)}
+.face .wax{position:absolute;top:57%;left:50%;transform:translate(-50%,-50%);
+  width:46px;height:46px;border-radius:50%;background:var(--red);display:flex;align-items:center;justify-content:center;
+  font-family:var(--head);font-weight:900;color:var(--paper);font-size:1.1rem;
+  box-shadow:inset 0 0 0 3px rgba(237,228,206,.45),0 1px 3px rgba(28,24,20,.35);
+  transition:transform .3s ease,opacity .25s ease}
+.env.open .face .wax{transform:translate(-50%,-50%) scale(.4);opacity:0}
+.face .who{position:absolute;left:12px;right:12px;bottom:30px;
+  font-family:var(--type);font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.face .cta{position:absolute;left:12px;right:12px;bottom:13px;
+  font-family:var(--type);font-size:.5rem;letter-spacing:.2em;text-transform:uppercase;color:var(--ink2)}
+
+/* the letter that unfolds out of it */
+.paper{padding:22px 20px 18px;font-family:var(--type);font-size:.82rem;line-height:1.7;
+  transform-origin:top center;transform:scaleY(.04);opacity:0;
+  transition:transform .52s cubic-bezier(.2,.9,.3,1),opacity .3s ease}
+.env.open .paper{transform:none;opacity:1;transition-delay:.14s}
+.paper .msg{margin:0 0 14px;white-space:pre-wrap;overflow-wrap:anywhere}
+.paper .sig{font-family:var(--head);font-style:italic;font-weight:700;color:var(--red);margin:0;text-align:right}
+.paper .reseal{font-family:var(--type);font-size:.5rem;letter-spacing:.2em;text-transform:uppercase;color:var(--ink2);
+  margin:16px 0 0;padding-top:10px;border-top:1px solid var(--hair);text-align:center;cursor:pointer}
+.empty{font-family:var(--type);font-size:.74rem;letter-spacing:.1em;color:var(--ink2);grid-column:1/-1;text-align:center;
+  padding:34px 14px;border:1px dashed var(--hair)}
+
+/* ─── picture page ─── */
+.railwrap{flex:1 1 auto!important;min-height:0;display:flex;flex-direction:column;justify-content:center}
+.rail{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;padding:4px 2px 14px;scrollbar-width:thin;
+  scrollbar-color:rgba(28,24,20,.4) transparent}
+.rail::-webkit-scrollbar{height:7px}
+.rail::-webkit-scrollbar-thumb{background:rgba(28,24,20,.4)}
+.rail .empty{flex:1 0 100%;margin:0}
+.frame{flex:0 0 min(320px,72vw);scroll-snap-align:center;border:1px solid var(--rule);padding:10px 10px 0;background:var(--paper2);margin:0}
+.frame img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;filter:grayscale(1) sepia(.42) contrast(1.16) brightness(1.03)}
+.frame .cap{font-family:var(--type);font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;padding:8px 1px 10px;
+  color:var(--ink2);border-top:1px solid var(--hair);margin-top:8px}
+.halftone{position:relative}
+.halftone::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.3;mix-blend-mode:multiply;
+  background-image:radial-gradient(circle at center,rgba(28,24,20,.9) .8px,transparent .9px);background-size:3.2px 3.2px}
+.railnav{display:flex;justify-content:center;gap:10px;margin-top:4px}
+.railnav button{font-family:var(--type);font-size:.61rem;letter-spacing:.16em;text-transform:uppercase;
+  background:transparent;border:1px solid var(--rule);color:var(--ink);padding:9px 16px;cursor:pointer;transition:background .18s,color .18s}
+.railnav button:hover{background:var(--ink);color:var(--paper)}
+
+footer{text-align:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--hair);
+  font-family:var(--type);font-size:.55rem;letter-spacing:.18em;text-transform:uppercase;color:var(--ink2)}
+
+/* ─── admin ─── */
+.veil{position:fixed;inset:0;background:rgba(20,16,12,.86);z-index:100;display:none;align-items:center;justify-content:center;
+  padding:18px;overflow-y:auto}
+.veil.on{display:flex}
+.panel{background:var(--paper);border:1px solid var(--ink);outline:4px double var(--ink);outline-offset:5px;
+  width:100%;max-width:560px;max-height:86vh;overflow:auto;padding:clamp(20px,4vw,28px);margin:auto}
+.panel h3{font-family:var(--head);font-weight:900;text-transform:uppercase;letter-spacing:.1em;font-size:1.15rem;margin:0 0 4px}
+.panel .note{font-family:var(--type);font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;color:var(--ink2);margin:0 0 18px}
+.tabs{display:flex;margin:0 0 18px;border-bottom:2px solid var(--rule)}
+.tabs button{flex:1;font-family:var(--type);font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;
+  background:transparent;border:0;border-bottom:3px solid transparent;padding:12px 4px;cursor:pointer;color:var(--ink2)}
+.tabs button.sel{color:var(--ink);border-bottom-color:var(--red)}
+input,textarea{width:100%;font-family:var(--type);font-size:.92rem;color:var(--ink);background:rgba(255,255,255,.45);
+  border:1px solid var(--rule);padding:12px 14px;margin-bottom:12px;border-radius:0}
+textarea{min-height:112px;resize:vertical;line-height:1.6}
+input:focus,textarea:focus{outline:2px solid var(--red);outline-offset:0}
+.btn{font-family:var(--type);font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;background:var(--ink);
+  color:var(--paper);border:0;padding:12px 22px;cursor:pointer;transition:background .18s,transform .15s}
+.btn:hover:not(:disabled){background:var(--red)}
+.btn:active:not(:disabled){transform:translateY(1px)}
+.btn:focus-visible{outline:2px solid var(--red);outline-offset:2px}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--rule)}
+.btn.ghost:hover{background:var(--ink);color:var(--paper)}
+.btn:disabled{opacity:.45;cursor:default}
+.status{font-family:var(--type);font-size:.66rem;letter-spacing:.1em;margin:12px 0 0;min-height:1.2em;color:var(--blue)}
+.status.err{color:var(--red)}
+.mini{border-top:1px solid var(--hair);margin-top:18px;padding-top:14px}
+.row{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px dotted var(--hair);font-size:.82rem}
+.row .txt{flex:1;font-family:var(--type);line-height:1.45;overflow-wrap:anywhere}
+.row .txt b{color:var(--red)}
+.kill{background:transparent;border:1px solid var(--rule);color:var(--ink);font-family:var(--type);font-size:.6rem;
+  letter-spacing:.14em;padding:6px 10px;cursor:pointer;text-transform:uppercase}
+.kill:hover{background:var(--red);color:var(--paper);border-color:var(--red)}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:9px;margin-top:14px}
+.thumbs div{position:relative}
+.thumbs img{width:100%;aspect-ratio:1;object-fit:cover;border:1px solid var(--rule);filter:grayscale(1) sepia(.35)}
+.thumbs .kill{position:absolute;top:3px;right:3px;background:var(--paper);padding:2px 6px}
+.drop{display:block;border:1.5px dashed var(--rule);padding:26px 14px;text-align:center;cursor:pointer;font-family:var(--type);
+  font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:12px}
+.drop:hover,.drop.over{background:rgba(158,43,37,.08);border-color:var(--red)}
+
+/* short windows: shed the optional furniture so the cake always fits */
+@media(max-height:640px){
+  .subhead,.byline,#screen-home footer{display:none}
+  .paper-name{font-size:clamp(1.5rem,5vw,2.2rem);margin:5px 0}
+  .dateline{display:none}
+}
+@media(max-width:520px){
+  .dateline{justify-content:center;gap:2px 10px}
+  .cakebtns .btn{width:100%}
+  .topbar{gap:6px}
+  .navbtn{padding:8px 10px;font-size:.56rem}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+
+<!-- hidden admin hotspot, present on every unlocked screen -->
+<button id="hot" aria-label="."></button>
+<!-- the confetti burst paints here and nowhere else -->
+<canvas id="confetti" aria-hidden="true"></canvas>
+
+<!-- ═══ SCREEN 0 — password gate ═══ -->
+<div class="screen active" id="screen-gate">
+  <div class="sheet">
+    <div class="gate">
+      <p class="kicker" data-txt="gateKicker">Restricted Circulation</p>
+      <h1 data-txt="gateTitle">Enter Password</h1>
+      <p class="hint" data-txt="gateHint">This edition is for invited readers only.</p>
+      <input id="gatePw" type="password" placeholder="Password" autocomplete="off" data-ph="gatePlaceholder">
+      <button class="btn" id="gateGo" data-txt="gateButton">Unlock the paper</button>
+      <p class="status err" id="gateErr"></p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SCREEN 1 — the front page, where the cake is the menu ═══ -->
+<div class="screen" id="screen-home">
+  <div class="sheet">
+    <header class="masthead">
+      <p class="tagline" data-txt="tagline">Established the day you were born</p>
+      <hr class="rule"><hr class="rule thin">
+      <h1 class="paper-name" id="paperName"></h1>
+      <hr class="rule thin"><hr class="rule">
+      <div class="dateline">
+        <span id="dl-city"></span><span id="dl-date"></span><span id="dl-price"></span>
+      </div>
+    </header>
+
+    <article class="lead">
+      <p class="kicker" data-txt="frontKicker">Front Page &nbsp;&middot;&nbsp; Special Edition</p>
+      <h1><span id="hl"></span><span class="name" id="hlName"></span></h1>
+      <p class="subhead" id="sub"></p>
+    </article>
+
+    <div class="stage" id="stage">
+
+      <!-- ── ACT ONE — the sealed envelope ── -->
+      <div class="envstage" id="envStage">
+        <button class="bigenv" id="bigEnv" type="button" aria-label="Open the envelope">
+          <svg viewBox="0 0 460 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
+            <rect x="2.5" y="2.5" width="455" height="295" fill="#E4D9BE" stroke="#1C1814" stroke-width="3"/>
+            <rect x="13" y="13" width="434" height="274" fill="none" stroke="#1C1814" stroke-width="1" opacity=".35"/>
+            <path d="M3 297 L230 165 L457 297" fill="none" stroke="#1C1814" stroke-width="1.6" opacity=".16"/>
+            <!-- addressee -->
+            <text class="envlbl" x="46" y="222" data-txt="envTo">To:</text>
+            <text class="envname" x="46" y="256" id="envName">Ian</text>
+            <path d="M44 266h190" stroke="#1C1814" stroke-width="1.4" opacity=".5"/>
+            <!-- stamp -->
+            <g opacity=".8">
+              <rect x="336" y="192" width="80" height="72" fill="none" stroke="#1C1814" stroke-width="1.6" stroke-dasharray="5 4"/>
+              <text class="envstamp" x="376" y="220" data-txt="envStampTop">First</text>
+              <text class="envstamp" x="376" y="238" data-txt="envStampBottom">Class</text>
+              <path d="M356 248h40M356 253h40" stroke="#1C1814" stroke-width="1.2" opacity=".5"/>
+            </g>
+            <!-- the flap -->
+            <path class="bigflap" d="M3 3 L457 3 L230 186 Z" fill="#DFD2AF" stroke="#1C1814" stroke-width="2.8"/>
+          </svg>
+          <span class="bigwax" id="bigWax">17</span>
+        </button>
+        <p class="envhint" data-txt="envHint">Tap the envelope to open it</p>
+      </div>
+
+      <!-- ── ACT TWO — the cake, flanked by its two cards ── -->
+      <div class="reveal" id="reveal" hidden>
+
+      <div class="sidecard left" id="cardMsg" data-go="screen-messages" role="button" tabindex="0"
+           aria-label="Read the messages">
+        <span class="pin"></span>
+        <p class="ck" data-txt="cardKicker">Turn to</p>
+        <h3 data-txt="tierMessages">The Messages</h3>
+        <p class="count" id="cMsgCount"></p>
+        <p class="sub" data-txt="tierMessagesSub">Page Two &#183; Tap to read</p>
+        <p class="cta" data-txt="cardCta">Read on &rarr;</p>
+      </div>
+
+      <div class="cakecol">
+      <div class="plate">
+        <svg class="cake" viewBox="0 0 360 288" preserveAspectRatio="xMidYMid meet"
+             aria-label="A birthday cake. Tap the candles to blow them out.">
+
+          <!-- flames + smoke -->
+          <g class="candle" id="c1"><path class="smoke" d="M135 40c-7-9 5-14-1-23" stroke="#4A4136" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <ellipse class="fl" cx="135" cy="54" rx="7" ry="13" fill="#9E2B25"/><ellipse class="fl" cx="135" cy="58" rx="3" ry="6" fill="#EDE4CE"/></g>
+          <g class="candle" id="c2"><path class="smoke" d="M180 30c-7-9 5-14-1-23" stroke="#4A4136" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <ellipse class="fl" cx="180" cy="44" rx="7" ry="13" fill="#9E2B25"/><ellipse class="fl" cx="180" cy="48" rx="3" ry="6" fill="#EDE4CE"/></g>
+          <g class="candle" id="c3"><path class="smoke" d="M225 40c-7-9 5-14-1-23" stroke="#4A4136" stroke-width="2" fill="none" stroke-linecap="round"/>
+            <ellipse class="fl" cx="225" cy="54" rx="7" ry="13" fill="#9E2B25"/><ellipse class="fl" cx="225" cy="58" rx="3" ry="6" fill="#EDE4CE"/></g>
+
+          <!-- the wax: click anywhere here to blow them out -->
+          <g id="candleZone" role="button" tabindex="0" aria-label="Blow out the candles">
+            <rect x="112" y="34" width="136" height="78" fill="transparent"/>
+            <g fill="#EDE4CE" stroke="#1C1814" stroke-width="2.5">
+              <rect x="130" y="70" width="10" height="42"/>
+              <rect x="175" y="60" width="10" height="52"/>
+              <rect x="220" y="70" width="10" height="42"/>
+            </g>
+          </g>
+
+          <!-- TOP TIER -->
+          <g class="tier">
+            <path class="tierfill" d="M92 110h176a12 12 0 0 1 12 12v46H80v-46a12 12 0 0 1 12-12z"/>
+            <path d="M80 168c15 11 30 11 44 0s30-11 44 0 30 11 44 0 30-11 44 0" fill="none" stroke="#1C1814" stroke-width="2" opacity=".55"/>
+            <text class="icing" x="180" y="142" data-txt="icingTop">Happy Birthday</text>
+            <text class="icing sm" x="180" y="158" data-txt="icingTopSub">Baked this morning</text>
+          </g>
+
+          <!-- BOTTOM TIER -->
+          <g class="tier">
+            <path class="tierfill" d="M60 168h240v78a12 12 0 0 1-12 12H72a12 12 0 0 1-12-12z"/>
+            <path d="M60 168c16 13 32 13 48 0s32-13 48 0 32 13 48 0 32-13 48 0 32 13 48 0" fill="none" stroke="#1C1814" stroke-width="2.5"/>
+            <text class="icing" x="180" y="212" data-txt="icingBottom">Many Happy Returns</text>
+            <text class="icing sm" x="180" y="228" data-txt="icingBottomSub">Serves everyone who loves you</text>
+          </g>
+
+          <!-- the table -->
+          <path d="M36 260h288" stroke="#1C1814" stroke-width="3" fill="none"/>
+          <path d="M52 266h256" stroke="#1C1814" stroke-width="1" fill="none" opacity=".45"/>
+        </svg>
+        <div class="stamp" id="stamp" data-txt="stamp">Wish Granted</div>
+      </div>
+
+      <p class="fig" id="fig"></p>
+      <div class="cakebtns">
+        <button class="btn" id="blowBtn" data-txt="blowButton">Make a wish &amp; blow out the candles</button>
+        <button class="btn ghost" id="relightBtn" style="display:none" data-txt="relightButton">Relight the candles</button>
+      </div>
+      </div><!-- /cakecol -->
+
+      <div class="sidecard right" id="cardPics" data-go="screen-photos" role="button" tabindex="0"
+           aria-label="See the photos">
+        <span class="pin"></span>
+        <p class="ck" data-txt="cardKicker">Turn to</p>
+        <h3 data-txt="tierPhotos">The Photos</h3>
+        <p class="count" id="cPicCount"></p>
+        <p class="sub" data-txt="tierPhotosSub">Page Three &#183; Tap to look</p>
+        <p class="cta" data-txt="cardCta">Read on &rarr;</p>
+      </div>
+
+      </div><!-- /reveal -->
+    </div><!-- /stage -->
+
+    <p class="byline" id="by"></p>
+  </div>
+</div>
+
+<!-- ═══ SCREEN 2 — messages ═══ -->
+<div class="screen" id="screen-messages">
+  <div class="sheet">
+    <header class="masthead mini">
+      <p class="tagline" data-txt="messagesTagline">Page Two &nbsp;&middot;&nbsp; Letters</p>
+      <hr class="rule"><hr class="rule thin">
+      <h1 class="paper-name" id="paperName2"></h1>
+      <hr class="rule thin"><hr class="rule">
+    </header>
+    <div class="topbar">
+      <button class="navbtn home" data-go="screen-home" data-txt="backButton">&larr; Back to the cake</button>
+      <button class="navbtn" data-go="screen-photos" data-txt="toPhotosButton">The Photos &rarr;</button>
+    </div>
+
+    <div class="scrollarea">
+      <section id="storySection">
+        <div class="sechead"><h2 data-txt="storyHeading">From the Editor</h2></div>
+        <p class="standfirst" data-txt="storyStandfirst">The lead story &middot; Filed today</p>
+        <div class="cols" id="story"></div>
+      </section>
+
+      <div class="sechead" id="lettersHead" style="margin-top:30px"><h2 data-txt="lettersHeading">Letters to the Editor</h2></div>
+      <p class="standfirst" data-txt="lettersStandfirst">Sealed on arrival &middot; Tap a letter to open it</p>
+      <div class="letters" id="letters"><p class="empty">Fetching the mailbag…</p></div>
+    </div>
+
+    <footer>For <span id="foot2"></span> &nbsp;&middot;&nbsp; <span data-txt="messagesFooter">With love from everyone who wrote in</span></footer>
+  </div>
+</div>
+
+<!-- ═══ SCREEN 3 — photos ═══ -->
+<div class="screen" id="screen-photos">
+  <div class="sheet">
+    <header class="masthead mini">
+      <p class="tagline" data-txt="photosTagline">Page Three &nbsp;&middot;&nbsp; Pictures</p>
+      <hr class="rule"><hr class="rule thin">
+      <h1 class="paper-name" id="paperName3"></h1>
+      <hr class="rule thin"><hr class="rule">
+    </header>
+    <div class="topbar">
+      <button class="navbtn home" data-go="screen-home" data-txt="backButton">&larr; Back to the cake</button>
+      <button class="navbtn" data-go="screen-messages" data-txt="toMessagesButton">The Messages &rarr;</button>
+    </div>
+
+    <div class="railwrap">
+      <div class="sechead"><h2 data-txt="photosHeading">The Picture Page</h2></div>
+      <p class="standfirst" data-txt="photosStandfirst">From the archives &middot; Drag sideways</p>
+      <div class="rail" id="rail"></div>
+      <div class="railnav"><button id="prev">&larr; Earlier</button><button id="next">Later &rarr;</button></div>
+    </div>
+
+    <footer>For <span id="foot"></span></footer>
+  </div>
+</div>
+
+<!-- admin -->
+<div class="veil" id="veil">
+  <div class="panel" id="panel"></div>
+</div>
+
+<script>
+/* ── helpers ── */
+const $=id=>document.getElementById(id);
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+
+/* ── wording: anything in CONFIG.words replaces the matching bit of the page ── */
+const W=Object.assign({},CONFIG.words||{});
+function word(k,fallback){return W[k]!==undefined?W[k]:(fallback||'')}
+document.querySelectorAll('[data-txt]').forEach(el=>{
+  const v=W[el.dataset.txt]; if(v!==undefined) el.textContent=v;
+});
+document.querySelectorAll('[data-ph]').forEach(el=>{
+  const v=W[el.dataset.ph]; if(v!==undefined) el.placeholder=v;
+});
+
+/* ── masthead & story (mirrored onto all three headers) ── */
+['paperName','paperName2','paperName3'].forEach(id=>{$(id).textContent=CONFIG.paperName});
+$('dl-city').textContent=CONFIG.city+' Edition';
+$('dl-date').textContent=new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+$('dl-price').textContent='Price: '+CONFIG.price;
+$('hl').textContent=CONFIG.headline?CONFIG.headline+' ':'Happy Birthday ';
+$('hlName').textContent=CONFIG.name;
+$('sub').textContent=CONFIG.subhead;
+$('by').textContent=CONFIG.byline;
+$('foot').textContent=CONFIG.name;
+$('foot2').textContent=CONFIG.name;
+document.title=CONFIG.paperName;
+
+/* the lead story is optional — leave it out of CONFIG (or set it to "") and the
+   whole "From the Editor" section simply disappears */
+const LEAD=(CONFIG.leadStory||'').trim();
+if(LEAD){
+  $('story').innerHTML=LEAD.split('\n\n').map(p=>'<p>'+esc(p)+'</p>').join('');
+}else{
+  $('storySection').style.display='none';
+  $('lettersHead').style.marginTop='0';
+}
+$('fig').innerHTML=esc(word('figLit','Fig. 1 — The candles, presently alight.'))+' <b>'+esc(word('cakeHint',''))+'</b>';
+
+/* ── router: one screen fills the window at a time ── */
+const SCREENS=['screen-gate','screen-home','screen-messages','screen-photos'];
+function showScreen(id){
+  SCREENS.forEach(s=>$(s).classList.toggle('active',s===id));
+  $('hot').classList.toggle('on',id!=='screen-gate');
+}
+/* works for buttons and for the SVG cake tiers alike */
+document.querySelectorAll('[data-go]').forEach(el=>{
+  el.addEventListener('click',()=>showScreen(el.dataset.go));
+  el.addEventListener('keydown',e=>{
+    if(e.key==='Enter'||e.key===' '){e.preventDefault();showScreen(el.dataset.go)}
+  });
+});
+
+/* ── ACT ONE → ACT TWO ────────────────────────────────────────────────────
+   Tap the envelope: the flap lifts, the envelope drops away, the cake vaults
+   up through a shower of confetti, and the two cards drop in beside it.
+   Opened once, it stays opened for the rest of the visit — coming back from
+   page two or three does not replay the show.
+   ───────────────────────────────────────────────────────────────────────── */
+const OPEN_KEY='wall_opened';
+const REDUCED=matchMedia('(prefers-reduced-motion:reduce)').matches;
+$('envName').textContent=CONFIG.name;
+$('bigWax').textContent=CONFIG.age||(CONFIG.name||'?').trim().charAt(0).toUpperCase();
+
+function settleStage(){
+  const r=$('reveal');r.classList.remove('pop','cards');r.classList.add('settled');
+}
+function revealNow(){                       /* straight to the cake, no show */
+  $('envStage').hidden=true;$('reveal').hidden=false;settleStage();
+}
+let opening=false;
+function openEnvelope(){
+  if(opening)return;opening=true;
+  try{sessionStorage.setItem(OPEN_KEY,'1')}catch(e){}
+  if(REDUCED){revealNow();return}
+  const env=$('envStage'),rev=$('reveal');
+  env.classList.add('go');
+  setTimeout(()=>{
+    env.hidden=true;rev.hidden=false;rev.classList.add('pop');
+    confetti();
+  },820);
+  setTimeout(()=>rev.classList.add('cards'),1600);
+  setTimeout(settleStage,2500);
+}
+$('bigEnv').onclick=openEnvelope;
+
+/* ── confetti, painted on one full-window canvas ── */
+const CONF_COLORS=['#9E2B25','#1C1814','#2E4057','#C9A227','#E4D9BE','#8A7458'];
+let confRAF=0;
+function confetti(opts){
+  opts=opts||{};
+  if(REDUCED)return;
+  const cv=$('confetti');if(!cv||!cv.getContext)return;
+  const ctx=cv.getContext('2d');
+  const dpr=Math.min(window.devicePixelRatio||1,2);
+  const fit=()=>{cv.width=innerWidth*dpr;cv.height=innerHeight*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)};
+  fit();addEventListener('resize',fit);
+  cv.classList.add('on');
+
+  const big=opts.small!==true;
+  const N=opts.count!==undefined?opts.count:(innerWidth<620?(big?150:70):(big?280:120));
+  const DUR=opts.duration||(big?4600:3000);
+  const G=.115, MAXV=11;
+  /* the wider the window, the harder the burst has to throw to reach the edges */
+  const reach=Math.min(1.9,Math.max(.95,innerWidth/1000));
+  const cx=innerWidth/2, cy=innerHeight*(opts.y||.55);
+  const bits=[];
+  for(let i=0;i<N;i++){
+    const fromCake=i<N*(big?.62:.8);
+    const a=Math.random()*Math.PI*2, sp=(big?6:4.5)+Math.random()*(big?13:8);
+    bits.push(fromCake?{
+      x:cx+(Math.random()-.5)*90, y:cy+(Math.random()-.5)*50,
+      vx:Math.cos(a)*sp*2.25*reach, vy:Math.sin(a)*sp*1.05-(big?10:7),
+      w:5+Math.random()*8, h:7+Math.random()*11,
+      rot:Math.random()*6.3, vr:(Math.random()-.5)*.34, ph:Math.random()*6.3,
+      c:CONF_COLORS[(Math.random()*CONF_COLORS.length)|0]
+    }:{
+      x:Math.random()*innerWidth, y:-20-Math.random()*380,
+      vx:(Math.random()-.5)*3.2, vy:1.4+Math.random()*2.6,
+      w:5+Math.random()*7, h:7+Math.random()*10,
+      rot:Math.random()*6.3, vr:(Math.random()-.5)*.26, ph:Math.random()*6.3,
+      c:CONF_COLORS[(Math.random()*CONF_COLORS.length)|0]
+    });
+  }
+  const t0=performance.now();
+  cancelAnimationFrame(confRAF);
+  (function frame(now){
+    const t=now-t0;
+    if(t>DUR){
+      ctx.clearRect(0,0,innerWidth,innerHeight);
+      cv.classList.remove('on');removeEventListener('resize',fit);return;
+    }
+    const fade=t>DUR-1100?Math.max(0,(DUR-t)/1100):1;
+    ctx.clearRect(0,0,innerWidth,innerHeight);
+    for(const p of bits){
+      p.vy=Math.min(p.vy+G,MAXV);
+      p.vx*=.988;
+      p.x+=p.vx;p.y+=p.vy;p.rot+=p.vr;p.ph+=.15;
+      p.vx+=Math.sin((p.y+p.ph*40)/90)*.05;                 /* a little drift */
+      if(p.y>innerHeight+60||p.x<-80||p.x>innerWidth+80)continue;
+      ctx.save();
+      ctx.translate(p.x,p.y);ctx.rotate(p.rot);
+      ctx.scale(Math.max(.12,Math.abs(Math.cos(p.ph))),1);   /* the paper flutters */
+      ctx.globalAlpha=fade;ctx.fillStyle=p.c;
+      ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+      ctx.restore();
+    }
+    confRAF=requestAnimationFrame(frame);
+  })(t0);
+}
+
+/* ── the two cards keep a running tally ── */
+function updateCounts(){
+  const m=msgs.length,p=pics.length;
+  $('cMsgCount').textContent=m?m+(m===1?' letter waiting':' letters waiting'):'The mailbag is empty';
+  $('cPicCount').textContent=p?p+(p===1?' picture on file':' pictures on file'):'The picture desk is empty';
+}
+
+/* ── storage ────────────────────────────────────────────────────────────────
+   Three tiers, best first:
+     host   — a storage service, if the page is running on one
+     local  — this browser's localStorage. Survives closing the tab, the
+              browser and the computer. This is what you get when you just
+              open the file. Kept per browser, per device.
+     memory — last resort if localStorage is blocked (private mode, etc).
+              Lasts until the tab closes.
+   Whatever you write here can also be baked permanently into CONFIG using
+   the Backup tab in the newsroom, so it travels with the file itself.
+   ────────────────────────────────────────────────────────────────────────── */
+const S=window.storage, mem={}, LS_PREFIX='gazette_';
+const IDB_NAME='gazette', IDB_STORE='kv';
+let DRIVER='memory', lastErr='', idbDB=null;
+
+/* --- the database, when the browser will give us one --- */
+function openIDB(){
+  return new Promise((res,rej)=>{
+    let req;
+    try{req=indexedDB.open(IDB_NAME,1)}catch(e){return rej(e)}
+    req.onupgradeneeded=()=>{
+      const db=req.result;
+      if(!db.objectStoreNames.contains(IDB_STORE))db.createObjectStore(IDB_STORE);
+    };
+    req.onsuccess=()=>res(req.result);
+    req.onerror=()=>rej(req.error||new Error('idb'));
+    req.onblocked=()=>rej(new Error('blocked'));
+    setTimeout(()=>rej(new Error('timeout')),3500);   // harmless once it has resolved
+  });
+}
+function idbDo(mode,fn){
+  return new Promise((res,rej)=>{
+    let tx;
+    try{tx=idbDB.transaction(IDB_STORE,mode)}catch(e){return rej(e)}
+    let out;
+    const r=fn(tx.objectStore(IDB_STORE));
+    if(r)r.onsuccess=()=>{out=r.result};
+    tx.oncomplete=()=>res(out);
+    tx.onerror=()=>rej(tx.error);
+    tx.onabort=()=>rej(tx.error);
+  });
+}
+
+/* Pick the sturdiest store this browser will actually allow, then move anything
+   found in the old localStorage copy across so nothing is left behind. */
+async function initStorage(){
+  if(S){DRIVER='host';return}
+  try{
+    idbDB=await openIDB();
+    await idbDo('readwrite',st=>st.put(1,'__probe'));
+    await idbDo('readwrite',st=>st.delete('__probe'));
+    DRIVER='idb';
+    await migrateFromLocal();
+    return;
+  }catch(e){idbDB=null}
+  try{
+    const t=LS_PREFIX+'__test';localStorage.setItem(t,'1');localStorage.removeItem(t);
+    DRIVER='local';return;
+  }catch(e){}
+  DRIVER='memory';
+}
+async function migrateFromLocal(){
+  let keys=[];
+  try{for(const k in localStorage){if(k.indexOf(LS_PREFIX)===0)keys.push(k)}}catch(e){return}
+  for(const k of keys){
+    const bare=k.slice(LS_PREFIX.length);
+    try{
+      if(await get(bare)!==null)continue;
+      await set(bare,JSON.parse(localStorage.getItem(k)));
+    }catch(e){}
+  }
+}
+
+async function get(k){
+  try{
+    if(DRIVER==='host'){const r=await S.get(k,true);return r?JSON.parse(r.value):null}
+    if(DRIVER==='idb'){const v=await idbDo('readonly',st=>st.get(k));return v===undefined?null:v}
+    if(DRIVER==='local'){const v=localStorage.getItem(LS_PREFIX+k);return v?JSON.parse(v):null}
+  }catch(e){}
+  return mem[k]??null;
+}
+async function set(k,v){
+  lastErr='';
+  try{
+    if(DRIVER==='host'){await S.set(k,JSON.stringify(v),true);mem[k]=v;return true}
+    if(DRIVER==='idb'){await idbDo('readwrite',st=>st.put(v,k));mem[k]=v;return true}
+    if(DRIVER==='local'){localStorage.setItem(LS_PREFIX+k,JSON.stringify(v));mem[k]=v;return true}
+  }catch(e){
+    const q=e&&(e.name==='QuotaExceededError'||e.name==='NS_ERROR_DOM_QUOTA_REACHED'||e.code===22);
+    lastErr=q?'full':'failed';
+  }
+  mem[k]=v;return false;
+}
+async function del(k){
+  try{
+    if(DRIVER==='host'){await S.delete(k,true)}
+    else if(DRIVER==='idb'){await idbDo('readwrite',st=>st.delete(k))}
+    else if(DRIVER==='local'){localStorage.removeItem(LS_PREFIX+k)}
+  }catch(e){}
+  delete mem[k];return true;
+}
+function prettyBytes(n){
+  if(n>=1073741824)return (n/1073741824).toFixed(1)+' GB';
+  if(n>=1048576)return (n/1048576).toFixed(1)+' MB';
+  return Math.round(n/1024)+' KB';
+}
+async function usedSpace(){
+  if(DRIVER==='local'){
+    let n=0;try{for(const k in localStorage){if(k.indexOf(LS_PREFIX)===0)n+=(localStorage.getItem(k)||'').length+k.length}}catch(e){}
+    return n?prettyBytes(n)+' used of about 5 MB':'';
+  }
+  if(DRIVER==='idb'&&navigator.storage&&navigator.storage.estimate){
+    try{const e=await navigator.storage.estimate();
+      if(e&&e.usage)return prettyBytes(e.usage)+(e.quota?' used of '+prettyBytes(e.quota)+' available':' used')}
+    catch(e){}
+  }
+  return '';
+}
+
+/* ── the whole scrapbook as one object, for the backup file ── */
+async function exportAll(){
+  const out={gazette:1,for:CONFIG.name,exported:new Date().toISOString(),messages:[],photos:[]};
+  out.messages=((await get(MKEY))||[]).map(m=>({n:m.n||'A friend',t:m.t}));
+  for(const id of ((await get(PKEY))||[])){
+    const d=await get('photo_'+id);
+    if(d)out.photos.push({src:d.src||d,cap:d.cap||''});
+  }
+  return out;
+}
+async function importAll(obj){
+  if(!obj||(!Array.isArray(obj.messages)&&!Array.isArray(obj.photos)))throw new Error('That is not a gazette backup file.');
+  let addedM=0,addedP=0;
+  const cur=(await get(MKEY))||[], seen=new Set();
+  (CONFIG.messages||[]).forEach(m=>seen.add(keyOf(m)));
+  cur.forEach(m=>seen.add(keyOf(m)));
+  (obj.messages||[]).forEach(m=>{
+    if(!m||!m.t)return;const k=keyOf(m);
+    if(seen.has(k))return;
+    seen.add(k);cur.push({n:m.n||'A friend',t:m.t});addedM++;
+  });
+  saved=cur;await set(MKEY,saved);
+  let ids=(await get(PKEY))||[];
+  const havePic=new Set(pics.map(p=>p.src));       /* the same picture never lands twice */
+  for(const p of (obj.photos||[])){
+    if(!p||!p.src||havePic.has(p.src))continue;
+    havePic.add(p.src);
+    const id=Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+    if(await set('photo_'+id,{src:p.src,cap:p.cap||''})){
+      ids=ids.concat([id]);await set(PKEY,ids);
+      pics.push({id,src:p.src,cap:p.cap||''});addedP++;
+    }else if(lastErr==='full')break;
+  }
+  rebuild();drawLetters();drawPics();
+  return {addedM,addedP};
+}
+
+/* ── password gate ── */
+const GATE_KEY='wall_unlocked';
+$('gateGo').onclick=tryGate;
+$('gatePw').onkeydown=e=>{if(e.key==='Enter')tryGate()};
+function tryGate(){
+  if($('gatePw').value===CONFIG.sitePassword){
+    try{sessionStorage.setItem(GATE_KEY,'1')}catch(e){}
+    showScreen('screen-home');
+    /* a fresh unlock always gets the envelope, sealed */
+  }else{
+    $('gateErr').textContent=word('gateWrong','Wrong password. Try again.');
+    $('gatePw').value='';$('gatePw').focus();
+  }
+}
+(function(){
+  let unlocked=false,opened=false;
+  try{unlocked=sessionStorage.getItem(GATE_KEY)==='1';opened=sessionStorage.getItem(OPEN_KEY)==='1'}catch(e){}
+  if(unlocked){
+    showScreen('screen-home');
+    if(opened){opening=true;revealNow()}   /* refreshed mid-visit: the cake is already out */
+    return;
+  }
+  $('gatePw')&&$('gatePw').focus();
+})();
+
+/* ── letters ──────────────────────────────────────────────────────────────
+   msgs  = what the page shows  =  CONFIG.messages (in the file, permanent)
+                                +  saved (this browser, added via newsroom)
+   Duplicates are removed, so once you paste a letter into CONFIG.messages
+   it shows once even though the browser still has its own copy.
+   ─────────────────────────────────────────────────────────────────────── */
+const MKEY='wall_messages';
+let saved=[];   // letters kept in this browser
+let msgs=[];    // everything on show
+function keyOf(m){return (m.n||'').trim().toLowerCase()+'|||'+(m.t||'').trim()}
+function rebuild(){
+  const seen=new Set();msgs=[];
+  (CONFIG.messages||[]).forEach(m=>{
+    if(!m||!m.t)return;const k=keyOf(m);
+    if(!seen.has(k)){seen.add(k);msgs.push({n:m.n||'A friend',t:m.t,from:'file'})}
+  });
+  saved.forEach((m,i)=>{
+    if(!m||!m.t)return;const k=keyOf(m);
+    if(!seen.has(k)){seen.add(k);msgs.push({n:m.n||'A friend',t:m.t,from:'saved',i})}
+  });
+}
+function initials(n){return (n||'?').trim().charAt(0).toUpperCase()}
+/* only one envelope may be open at a time */
+let openEnv=null;
+function sealEnv(el){
+  if(!el)return;
+  el.classList.remove('open');
+  el.style.maxHeight='';
+  const f=el.querySelector('.face'); if(f)f.setAttribute('aria-expanded','false');
+  if(openEnv===el)openEnv=null;
+}
+function unfoldEnv(el){
+  if(openEnv===el){sealEnv(el);return}
+  sealEnv(openEnv);                    // the previous one seals itself back
+  el.classList.add('open');
+  el.style.maxHeight=el.scrollHeight+'px';
+  el.querySelector('.face').setAttribute('aria-expanded','true');
+  openEnv=el;
+  setTimeout(()=>{try{el.scrollIntoView({block:'nearest',behavior:'smooth'})}catch(e){}},140);
+}
+addEventListener('resize',()=>{if(openEnv){openEnv.style.maxHeight='none';openEnv.style.maxHeight=openEnv.scrollHeight+'px'}});
+
+function drawLetters(){
+  const box=$('letters');
+  openEnv=null;updateCounts();
+  if(!msgs.length){box.innerHTML='<p class="empty">'+esc(word('noLetters','No letters yet.'))+'</p>';return}
+  box.innerHTML=msgs.map(m=>{
+    const who=esc(m.n);
+    return '<article class="env">'+
+      '<div class="paper">'+
+        '<p class="msg">'+esc(m.t)+'</p>'+
+        '<p class="sig">— '+who+'</p>'+
+        '<p class="reseal">Click to seal it back</p>'+
+      '</div>'+
+      '<button class="face" type="button" aria-expanded="false" aria-label="Open the letter from '+who+'">'+
+        '<svg class="envart" viewBox="0 0 300 180" preserveAspectRatio="none" aria-hidden="true" focusable="false">'+
+          '<rect x="1.5" y="1.5" width="297" height="177" fill="#E4D9BE" stroke="#1C1814" stroke-width="2.5"/>'+
+          '<path d="M2 177 L150 97 L298 177" fill="none" stroke="#1C1814" stroke-width="1.6" opacity=".4"/>'+
+          '<path class="flapart" d="M2 2 L298 2 L150 104 Z" fill="#DFD2AF" stroke="#1C1814" stroke-width="2.2"/>'+
+        '</svg>'+
+        '<span class="wax">'+esc(initials(m.n))+'</span>'+
+        '<span class="who">'+who+'</span>'+
+        '<span class="cta">Sealed — tap to open</span>'+
+      '</button>'+
+    '</article>';
+  }).join('');
+
+  box.querySelectorAll('.env').forEach(el=>{
+    el.querySelector('.face').addEventListener('click',e=>{e.stopPropagation();unfoldEnv(el)});
+    el.addEventListener('click',()=>{if(el.classList.contains('open'))sealEnv(el)});
+  });
+}
+addEventListener('keydown',e=>{if(e.key==='Escape'&&openEnv)sealEnv(openEnv)});
+async function loadMsgs(){saved=(await get(MKEY))||[];rebuild();drawLetters()}
+
+/* ── pictures ── */
+const PKEY='wall_photo_ids';
+let pics=[];
+function drawPics(){
+  const r=$('rail');updateCounts();
+  if(!pics.length){r.innerHTML='<p class="empty">'+esc(word('noPhotos','The picture desk is empty.'))+'</p>';return}
+  r.innerHTML=pics.map((p,i)=>'<figure class="frame"><div class="halftone"><img src="'+p.src+'" alt="" loading="lazy"></div>'+
+    '<figcaption class="cap">Plate '+(i+1)+' — '+esc(p.cap||'From the archives')+'</figcaption></figure>').join('');
+}
+async function loadPics(){
+  pics=CONFIG.photos.map(u=>({src:u,cap:''}));
+  const ids=(await get(PKEY))||[];
+  for(const id of ids){const d=await get('photo_'+id);if(d)pics.push({id,src:d.src||d,cap:d.cap||''})}
+  drawPics();
+}
+$('next').onclick=()=>$('rail').scrollBy({left:$('rail').clientWidth*.75,behavior:'smooth'});
+$('prev').onclick=()=>$('rail').scrollBy({left:-$('rail').clientWidth*.75,behavior:'smooth'});
+
+/* ── the candles ── */
+const candles=[$('c1'),$('c2'),$('c3')];
+let blown=false;
+function blowOut(){
+  if(blown)return;blown=true;
+  $('blowBtn').disabled=true;
+  candles.forEach((c,i)=>setTimeout(()=>c.classList.add('out'),i*520));
+  setTimeout(()=>{
+    $('fig').innerHTML=esc(word('figOut','Fig. 2 — Wish granted.'))+' <b>'+esc(word('cakeHint',''))+'</b>';
+    $('stamp').classList.add('on');
+    $('blowBtn').style.display='none';
+    $('relightBtn').style.display='inline-block';
+    confetti({small:true,y:.5});          /* a smaller cheer for the wish */
+  },candles.length*520+300);
+}
+function relight(){
+  blown=false;
+  candles.forEach(c=>c.classList.remove('out'));
+  $('fig').innerHTML=esc(word('figLit','Fig. 1 — The candles, presently alight.'))+' <b>'+esc(word('cakeHint',''))+'</b>';
+  $('stamp').classList.remove('on');
+  $('blowBtn').style.display='inline-block';$('blowBtn').disabled=false;
+  $('relightBtn').style.display='none';
+}
+$('blowBtn').onclick=blowOut;
+$('relightBtn').onclick=relight;
+/* the candles themselves are clickable too */
+$('candleZone').addEventListener('click',blowOut);
+$('candleZone').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();blowOut()}});
+
+/* ══ ADMIN (hidden editorial panel — separate from the site password) ══ */
+let authed=false,tab='letters';
+const veil=$('veil'),panel=$('panel');
+$('hot').onclick=()=>{veil.classList.add('on');authed?renderAdmin():renderLock()};
+veil.onclick=e=>{if(e.target===veil)veil.classList.remove('on')};
+addEventListener('keydown',e=>{if(e.key==='Escape')veil.classList.remove('on')});
+
+function renderLock(msg){
+  panel.innerHTML='<h3>Editorial Access</h3><p class="note">Staff only. Everyone else, enjoy the paper.</p>'+
+    '<input id="pw" type="password" placeholder="Password" autocomplete="off">'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" id="unlock">Enter newsroom</button> <button class="btn ghost" id="close">Back</button></div>'+
+    '<p class="status err" id="pwErr">'+(msg||'')+'</p>';
+  $('pw').focus();
+  $('close').onclick=()=>veil.classList.remove('on');
+  $('unlock').onclick=try_;
+  $('pw').onkeydown=e=>{if(e.key==='Enter')try_()};
+  function try_(){ if($('pw').value===CONFIG.adminPassword){authed=true;renderAdmin()} else renderLock('Wrong password. The presses stay locked.') }
+}
+
+function renderAdmin(){
+  panel.innerHTML='<h3>Newsroom</h3><p class="note">Anything you add here appears on the public page.</p>'+
+    '<div class="tabs"><button data-t="letters">Letters</button><button data-t="pictures">Pictures</button>'+
+      '<button data-t="backup">Backup</button></div>'+
+    '<div id="tabBody"></div>'+
+    '<div style="margin-top:20px;text-align:right"><button class="btn ghost" id="done">Close</button></div>';
+  panel.querySelectorAll('.tabs button').forEach(b=>{
+    b.classList.toggle('sel',b.dataset.t===tab);
+    b.onclick=()=>{tab=b.dataset.t;renderAdmin()};
+  });
+  $('done').onclick=()=>veil.classList.remove('on');
+  if(tab==='letters')letterTab();
+  else if(tab==='pictures')pictureTab();
+  else backupTab();
+}
+
+/* ── Backup: make the letters permanent by pasting them into the file ── */
+async function backupTab(){
+  const where={
+    host:'a storage service',
+    idb:'this browser&rsquo;s own database',
+    local:'this browser&rsquo;s small store',
+    memory:'nowhere &mdash; this tab only!'
+  }[DRIVER];
+  const used=await usedSpace();
+  const block=saved.length
+    ? 'messages: [\n'+saved.map(m=>'    {n: '+JSON.stringify(m.n||'A friend')+', t: '+JSON.stringify(m.t)+'},').join('\n')+'\n  ],'
+    : 'messages: [],';
+  $('tabBody').innerHTML=
+    '<p class="note" style="margin:0 0 6px">Kept in: <b style="color:var(--red)">'+where+'</b></p>'+
+    '<p class="note" style="margin:0 0 16px">'+saved.length+' letter'+(saved.length===1?'':'s')+
+      ' &middot; '+pics.filter(p=>p.id).length+' picture'+(pics.filter(p=>p.id).length===1?'':'s')+
+      (used?' &middot; '+esc(used):'')+'</p>'+
+    (DRIVER==='memory'
+      ? '<p class="note" style="border:1px solid var(--red);color:var(--red);padding:10px 12px;margin:0 0 16px">'+
+        'This browser is refusing to store anything, so nothing will survive a refresh. '+
+        'Try a normal (not private) window, then restore from a backup file below.</p>'
+      : '<p class="note" style="margin:0 0 16px">Everything added in here is written down straight away and will still '+
+        'be here after a refresh &mdash; but only on <em>this</em> computer, in <em>this</em> browser.</p>')+
+
+    '<div class="sechead" style="margin:0 0 12px"><h2 style="font-size:.9rem">The backup file</h2></div>'+
+    '<p class="note" style="margin:0 0 12px">One file holding every letter and every picture. Keep it somewhere safe. '+
+      'Loading it back in puts everything where it was &mdash; on any computer, in any browser.</p>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px">'+
+      '<button class="btn" id="bkDown">Download the backup</button>'+
+      '<label class="btn ghost" for="bkFile" style="display:inline-block">Restore from a file'+
+        '<input type="file" id="bkFile" accept="application/json,.json" hidden></label>'+
+    '</div>'+
+    '<p class="note" style="margin:8px 0 22px">Restoring only adds what is missing &mdash; nothing already here is duplicated, '+
+      'so it is safe to load the same file twice.</p>'+
+
+    '<div class="sechead" style="margin:0 0 12px"><h2 style="font-size:.9rem">Into the file itself</h2></div>'+
+    '<p class="note" style="margin:0 0 10px">To bake the letters into this HTML file &mdash; so they travel with it anywhere '+
+      'you send it &mdash; copy the block below and paste it into CONFIG, just above the <b>words:</b> line.</p>'+
+    '<textarea id="bkOut" readonly style="min-height:130px;font-size:.78rem">'+esc(block)+'</textarea>'+
+    '<div style="display:flex;gap:10px;flex-wrap:wrap">'+
+      '<button class="btn" id="bkCopy">Copy the block</button>'+
+      '<button class="btn ghost" id="bkClear">Clear this browser\'s copy</button>'+
+    '</div><p class="status" id="bkSt"></p>';
+
+  $('bkDown').onclick=async()=>{
+    const st=$('bkSt');st.className='status';st.textContent='Wrapping it up…';
+    try{
+      const data=await exportAll();
+      const blob=new Blob([JSON.stringify(data,null,1)],{type:'application/json'});
+      const url=URL.createObjectURL(blob),a=document.createElement('a');
+      a.href=url;
+      a.download=(CONFIG.name||'gazette').toLowerCase().replace(/[^a-z0-9]+/g,'-')+'-gazette-backup.json';
+      document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),5000);
+      st.textContent='Saved to your downloads — '+data.messages.length+' letter'+(data.messages.length===1?'':'s')+
+                     ' and '+data.photos.length+' picture'+(data.photos.length===1?'':'s')+'.';
+    }catch(e){st.className='status err';st.textContent='The backup file could not be built.'}
+  };
+
+  $('bkFile').onchange=async e=>{
+    const f=e.target.files&&e.target.files[0];e.target.value='';
+    if(!f)return;
+    const st=$('bkSt');st.className='status';st.textContent='Reading the file…';
+    try{
+      const txt=await new Promise((res,rej)=>{
+        const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(r.error);r.readAsText(f);
+      });
+      const r=await importAll(JSON.parse(txt));
+      await backupTab();
+      $('bkSt').className='status';
+      $('bkSt').textContent='Restored — '+r.addedM+' new letter'+(r.addedM===1?'':'s')+
+        ', '+r.addedP+' new picture'+(r.addedP===1?'':'s')+'.'+
+        (lastErr==='full'?' The store filled up before the last few pictures went in.':'');
+    }catch(err){
+      st.className='status err';
+      st.textContent=(err&&err.message)?err.message:'That file could not be read.';
+    }
+  };
+
+  $('bkCopy').onclick=()=>{
+    const ta=$('bkOut'),st=$('bkSt');
+    ta.select();ta.setSelectionRange(0,99999);
+    const done=()=>{st.className='status';st.textContent='Copied. Paste it into CONFIG and save the file.'};
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(ta.value).then(done,()=>{
+        st.className='status';st.textContent='Selected — press Ctrl+C to copy.';
+      });
+    }else{
+      try{document.execCommand('copy');done()}
+      catch(e){st.className='status';st.textContent='Selected — press Ctrl+C to copy.'}
+    }
+  };
+  $('bkClear').onclick=async()=>{
+    if(!confirm('Delete the '+saved.length+' letter(s) saved in this browser? Anything already pasted into the file stays. '+
+                'Download the backup first if you are not sure.'))return;
+    saved=[];await set(MKEY,saved);rebuild();drawLetters();
+    await backupTab();
+    $('bkSt').className='status';$('bkSt').textContent='This browser\'s copy is cleared.';
+  };
+}
+
+function letterTab(){
+  $('tabBody').innerHTML='<input id="aName" maxlength="40" placeholder="Who it is from">'+
+    '<textarea id="aText" maxlength="900" placeholder="The letter itself…"></textarea>'+
+    '<button class="btn" id="aAdd">Publish letter</button><p class="status" id="aSt"></p>'+
+    '<div class="mini" id="aList"></div>';
+  list();
+  $('aAdd').onclick=async()=>{
+    const n=$('aName'),t=$('aText'),st=$('aSt'),b=$('aAdd');
+    if(!t.value.trim()){st.className='status err';st.textContent='Write the letter first.';return}
+    b.disabled=true;st.className='status';st.textContent='Setting type…';
+    saved=((await get(MKEY))||[]).concat([{n:n.value.trim()||'A friend',t:t.value.trim()}]);
+    const ok=await set(MKEY,saved);
+    rebuild();drawLetters();list();t.value='';n.value='';b.disabled=false;
+    st.className=ok?'status':'status err';
+    st.textContent=ok?'Published and saved — it will still be here after a refresh.'
+                    :(lastErr==='full'?'The browser store is full. Remove a photo and try again.'
+                                      :'Shown here, but it did not save. Try again.');
+  };
+  function list(){
+    $('aList').innerHTML=msgs.length?msgs.map(m=>
+      '<div class="row"><div class="txt"><b>'+esc(m.n)+'</b> — '+esc(m.t.slice(0,90))+(m.t.length>90?'…':'')+'</div>'+
+      (m.from==='saved'?'<button class="kill" data-i="'+m.i+'">Pull</button>'
+                       :'<span class="kill" style="opacity:.5;pointer-events:none">In file</span>')+
+      '</div>').join(''):'<p class="note" style="margin:0">No letters yet.</p>';
+    $('aList').querySelectorAll('button.kill').forEach(b=>b.onclick=async()=>{
+      saved.splice(+b.dataset.i,1);await set(MKEY,saved);rebuild();drawLetters();list();
+    });
+  }
+}
+
+function pictureTab(){
+  $('tabBody').innerHTML='<label class="drop" id="drop"><input type="file" id="file" accept="image/*" multiple hidden>Tap to add photos — or drag them here</label>'+
+    '<input id="cap" maxlength="60" placeholder="Caption for the next upload (optional)">'+
+    '<p class="status" id="pSt"></p><div class="thumbs" id="thumbs"></div>';
+  thumbs();
+  const drop=$('drop'),file=$('file');
+  file.onchange=e=>{handle(e.target.files);file.value=''};
+  ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over')}));
+  ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}));
+  drop.addEventListener('drop',e=>handle(e.dataTransfer.files));
+
+  function thumbs(){
+    $('thumbs').innerHTML=pics.map((p,i)=>'<div><img src="'+p.src+'" alt="">'+(p.id?'<button class="kill" data-i="'+i+'">×</button>':'')+'</div>').join('');
+    $('thumbs').querySelectorAll('.kill').forEach(b=>b.onclick=async()=>{
+      const p=pics[+b.dataset.i];
+      let ids=(await get(PKEY))||[];ids=ids.filter(x=>x!==p.id);
+      await set(PKEY,ids);await del('photo_'+p.id);
+      pics.splice(+b.dataset.i,1);drawPics();thumbs();
+    });
+  }
+  function shrink(f){return new Promise((res,rej)=>{const r=new FileReader();
+    r.onload=()=>{const im=new Image();im.onload=()=>{const m=(DRIVER==='idb'?1500:1100),s=Math.min(1,m/Math.max(im.width,im.height));
+      const c=document.createElement('canvas');c.width=im.width*s;c.height=im.height*s;
+      c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.72))};
+      im.onerror=rej;im.src=r.result};r.onerror=rej;r.readAsDataURL(f)})}
+  async function handle(files){
+    const st=$('pSt'),cap=$('cap').value.trim(),list=[...files].filter(f=>f.type.startsWith('image/'));
+    if(!list.length){st.className='status err';st.textContent='Images only.';return}
+    st.className='status';st.textContent='Developing '+list.length+' plate'+(list.length>1?'s':'')+'…';
+    let ids=(await get(PKEY))||[];
+    for(const f of list){
+      try{
+        const src=await shrink(f);
+        const id=Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+        const ok=await set('photo_'+id,{src,cap});
+        if(ok){ids=ids.concat([id]);await set(PKEY,ids)}
+        else if(lastErr==='full'){
+          await del('photo_'+id);
+          st.className='status err';
+          st.textContent='No room left in this browser for that one. Photos are big — keep it to a few, or put them online and list the links in CONFIG.photos.';
+          continue;
+        }
+        pics.push({id,src,cap});
+      }catch(e){st.className='status err';st.textContent='One image would not develop.'}
+    }
+    $('cap').value='';drawPics();thumbs();
+    if(!st.classList.contains('err')){st.textContent='Added and saved — still here after a refresh.'}
+  }
+}
+
+/* nothing is read or written until the store has been chosen */
+(async function boot(){
+  await initStorage();
+  await loadMsgs();
+  await loadPics();
+})();
+</script>
