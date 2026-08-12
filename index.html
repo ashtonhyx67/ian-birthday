@@ -117,7 +117,7 @@ const CONFIG = {
     photosTagline:     "Page Three  ·  Pictures",
     toMessagesButton:  "The Messages →",
     photosHeading:     "The Picture Page",
-    photosStandfirst:  "From the archives · Drag sideways",
+    photosStandfirst:  "From the archives · Rolling by itself — touch to take over",
     noPhotos:          "The picture desk is empty."
   }
 };
@@ -435,15 +435,26 @@ body{color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6;-we
 .railwrap{flex:1 1 auto!important;min-height:0;display:flex;flex-direction:column;justify-content:center}
 .rail{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;padding:4px 2px 14px;scrollbar-width:thin;
   scrollbar-color:rgba(28,24,20,.4) transparent}
+/* While the reel is turning by itself, snapping would fight it for the
+   scroll position every frame, so it comes off. */
+.rail.loop{scroll-snap-type:none}
 .rail::-webkit-scrollbar{height:7px}
 .rail::-webkit-scrollbar-thumb{background:rgba(28,24,20,.4)}
 .rail .empty{flex:1 0 100%;margin:0}
 .frame{flex:0 0 min(320px,72vw);scroll-snap-align:center;border:1px solid var(--rule);padding:10px 10px 0;background:var(--paper2);margin:0}
-.frame img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;filter:grayscale(1) sepia(.42) contrast(1.16) brightness(1.03)}
+/* Full colour. The pictures used to be pushed through grayscale+sepia to look
+   printed; now they keep their own colour and only get a whisper of warmth so
+   they still sit on the page rather than floating above it.
+   ► Want the old newsprint look back? Put this in place of the filter line:
+     filter:grayscale(1) sepia(.42) contrast(1.16) brightness(1.03)  */
+.frame img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;
+  filter:saturate(1.06) contrast(1.03)}
 .frame .cap{font-family:var(--type);font-size:.58rem;letter-spacing:.12em;text-transform:uppercase;padding:8px 1px 10px;
   color:var(--ink2);border-top:1px solid var(--hair);margin-top:8px}
 .halftone{position:relative}
-.halftone::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.3;mix-blend-mode:multiply;
+/* the printer's dot screen — kept, but faint, so it reads as newsprint
+   without draining the colour. Set opacity:0 to lose it altogether. */
+.halftone::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.1;mix-blend-mode:multiply;
   background-image:radial-gradient(circle at center,rgba(28,24,20,.9) .8px,transparent .9px);background-size:3.2px 3.2px}
 .railnav{display:flex;justify-content:center;gap:10px;margin-top:4px}
 .railnav button{font-family:var(--type);font-size:.61rem;letter-spacing:.16em;text-transform:uppercase;
@@ -488,7 +499,7 @@ input:focus,textarea:focus{outline:2px solid var(--red);outline-offset:0}
 .kill:hover{background:var(--red);color:var(--paper);border-color:var(--red)}
 .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:9px;margin-top:14px}
 .thumbs div{position:relative}
-.thumbs img{width:100%;aspect-ratio:1;object-fit:cover;border:1px solid var(--rule);filter:grayscale(1) sepia(.35)}
+.thumbs img{width:100%;aspect-ratio:1;object-fit:cover;border:1px solid var(--rule)}
 .thumbs .kill{position:absolute;top:3px;right:3px;background:var(--paper);padding:2px 6px}
 .drop{display:block;border:1.5px dashed var(--rule);padding:26px 14px;text-align:center;cursor:pointer;font-family:var(--type);
   font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;margin-bottom:12px}
@@ -703,7 +714,7 @@ input:focus,textarea:focus{outline:2px solid var(--red);outline-offset:0}
 
     <div class="railwrap">
       <div class="sechead"><h2 data-txt="photosHeading">The Picture Page</h2></div>
-      <p class="standfirst" data-txt="photosStandfirst">From the archives &middot; Drag sideways</p>
+      <p class="standfirst" data-txt="photosStandfirst">From the archives &middot; Rolling by itself &mdash; touch to take over</p>
       <div class="rail" id="rail"></div>
       <div class="railnav"><button id="prev">&larr; Earlier</button><button id="next">Later &rarr;</button></div>
     </div>
@@ -762,12 +773,71 @@ if(LEAD){
   $('lettersHead').style.marginTop='0';
 }
 
+/* ── THE REEL — the picture page turns itself ───────────────────────────────
+   The pictures are laid out twice, end to end, and the rail creeps sideways a
+   few pixels a second. The instant the second run reaches where the first one
+   began, we jump back by exactly one run's width — the two runs are identical,
+   so the join is invisible and the pictures appear to go round for ever.
+
+   It gets out of the way the moment anybody wants to look properly: hovering,
+   dragging, using the arrows or the scroll wheel all stop it, and it picks up
+   again a few seconds after they stop. It never runs while another page is on
+   screen, while the tab is in the background, or for a reader who has asked
+   their computer for less motion.
+
+   ► SPEED is pixels per second. Lower is statelier; 0 stops it entirely.
+   ── ─────────────────────────────────────────────────────────────────────── */
+const Reel=(function(){
+  const SPEED=26;
+  const CALM=3200;                          // how long a touch buys before it resumes
+  const STILL=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  let raf=null,pos=0,last=0,hover=false,until=0,active=false;
+
+  function tick(now){
+    const r=$('rail');
+    const dt=Math.min(0.05,(now-(last||now))/1000);last=now;
+    const held=hover||now<until||document.hidden||!active||STILL;
+    const room=r.scrollWidth-r.clientWidth;
+    if(held||room<4){
+      pos=r.scrollLeft;                     // somebody else is steering — keep up
+    }else{
+      pos+=SPEED*dt;
+      /* one run is half the whole strip; wrap the moment we clear it */
+      if(r.classList.contains('loop')){const one=r.scrollWidth/2;if(one>0&&pos>=one)pos-=one}
+      else if(pos>room){pos=0}
+      r.scrollLeft=pos;
+    }
+    raf=requestAnimationFrame(tick);
+  }
+
+  function wire(){
+    const r=$('rail');
+    r.addEventListener('pointerenter',()=>{hover=true});
+    r.addEventListener('pointerleave',()=>{hover=false});
+    ['pointerdown','touchstart','wheel','keydown'].forEach(ev=>
+      r.addEventListener(ev,()=>{nudge()},{passive:true}));
+  }
+  function nudge(){until=performance.now()+CALM}
+  function start(){
+    active=true;
+    if(raf===null){last=0;raf=requestAnimationFrame(tick)}
+  }
+  function stop(){
+    active=false;
+    if(raf!==null){cancelAnimationFrame(raf);raf=null}
+  }
+  function reset(){pos=0;const r=$('rail');if(r)r.scrollLeft=0}
+
+  return{start,stop,reset,nudge,wire};
+})();
+
 /* ── router: one screen fills the window at a time ── */
 const SCREENS=['screen-gate','screen-home','screen-messages','screen-photos'];
 function showScreen(id){
   SCREENS.forEach(s=>$(s).classList.toggle('active',s===id));
   $('hot').classList.toggle('on',id!=='screen-gate');
   $('musicBtn').classList.toggle('on',id!=='screen-gate');
+  id==='screen-photos'?Reel.start():Reel.stop();
 }
 /* works for buttons and for the SVG cake tiers alike */
 document.querySelectorAll('[data-go]').forEach(el=>{
@@ -1154,8 +1224,16 @@ function drawPics(){
      still display:none, and Chrome then never gets round to fetching lazy
      images once it is shown — every frame stays blank. There are only ever a
      handful of pictures, so they load eagerly. */
-  r.innerHTML=pics.map((p,i)=>'<figure class="frame"><div class="halftone"><img src="'+esc(p.src)+'" alt=""></div>'+
+  const run=copy=>pics.map((p,i)=>
+    '<figure class="frame"'+(copy?' aria-hidden="true"':'')+'><div class="halftone"><img src="'+esc(p.src)+'" alt=""></div>'+
     '<figcaption class="cap">Plate '+(i+1)+' — '+esc(p.cap||'From the archives')+'</figcaption></figure>').join('');
+  /* Two identical runs so the reel can wrap without a seam. A single picture
+     has nothing to turn, so it stays on its own and the rail keeps snapping.
+     The second run is hidden from screen readers — it is the same pictures. */
+  const loop=pics.length>1;
+  r.innerHTML=loop?run(false)+run(true):run(false);
+  r.classList.toggle('loop',loop);
+  Reel.reset();
 }
 /* CONFIG.photos entries may be either a plain path/URL or {src, cap} so the
    pictures that ship with the site can carry their own captions:
@@ -1177,8 +1255,10 @@ async function loadPics(){
   for(const id of ids){const d=await get('photo_'+id);if(d)pics.push({id,src:d.src||d,cap:d.cap||''})}
   drawPics();
 }
-$('next').onclick=()=>$('rail').scrollBy({left:$('rail').clientWidth*.75,behavior:'smooth'});
-$('prev').onclick=()=>$('rail').scrollBy({left:-$('rail').clientWidth*.75,behavior:'smooth'});
+/* the arrows take the wheel: the reel stands down for a few seconds */
+$('next').onclick=()=>{Reel.nudge();$('rail').scrollBy({left:$('rail').clientWidth*.75,behavior:'smooth'})};
+$('prev').onclick=()=>{Reel.nudge();$('rail').scrollBy({left:-$('rail').clientWidth*.75,behavior:'smooth'})};
+Reel.wire();
 
 /* ── the candles ───────────────────────────────────────────────────────────
    No buttons. Once the cake is out and the cards have landed, the candles
