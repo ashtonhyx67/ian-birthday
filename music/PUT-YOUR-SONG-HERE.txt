@@ -1,0 +1,18 @@
+BACKGROUND MUSIC
+================
+
+Right now the site plays a soft acoustic-guitar loop that it makes up by
+itself — there is no file involved, so nothing can go missing.
+
+If you would rather it played a real song:
+
+  1. Drop the audio file into this "music" folder.
+  2. Rename it to           song.mp3
+     (or keep its own name and change the "music:" line near the top of
+      index.html to match, e.g.  music: "music/whatever-you-called-it.mp3")
+  3. Refresh the page.
+
+mp3, m4a, ogg and wav all work. If the file is missing or will not play,
+the page quietly goes back to the guitar loop, so nothing ever breaks.
+
+Volume lives on the "musicVolume:" line in index.html (0 to 1).

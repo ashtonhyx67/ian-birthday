@@ -26,6 +26,22 @@ const CONFIG = {
 
   sitePassword:  "birthday",             // ← change this. Guests need this to enter the site at all.
   adminPassword: "cakepin",              // ← change this. Used to unlock the hidden editorial panel.
+
+  /* ── Background music ──────────────────────────────────────────────────
+     Plays quietly on every page and keeps going as you move around.
+
+     music: put an audio file next to this page — say a folder called
+            "music" with "song.mp3" inside it — and write its path here.
+            If the file is missing (or you leave this as ""), the page
+            plays a soft acoustic-guitar loop it makes up on the spot,
+            so there is always something to hear.
+
+     Browsers refuse to make noise until the reader has touched the page,
+     so it starts on the first tap or key press and then follows along.
+     There is a ♪ button in the corner to turn it off; the page remembers. */
+  music:        "music/song.mp3",
+  musicVolume:  0.5,                     // 0 (silent) – 1 (loud)
+  musicOnByDefault: true,                // false = starts muted, reader opts in
   photos: [
       "photos/photo_2026-08-12_20-04-51.jpg",
       "photos/photo_2026-08-12_20-05-14.jpg",
@@ -63,6 +79,7 @@ const CONFIG = {
     gatePlaceholder:   "Password",
     gateButton:        "Unlock the paper",
     gateWrong:         "Wrong password. Try again.",
+    soundHint:         "♪ Best read with your sound turned on",
   
 
     /* the envelope on the front page */
@@ -122,7 +139,14 @@ body{color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6;-we
 ::selection{background:var(--red);color:var(--paper)}
 
 /* ─── every screen fills the whole window, edge to edge ─── */
-.screen{position:fixed;inset:0;display:none;background:var(--paper)}
+/* The wallpaper: baseballs, bats, guitars and a pair of quavers, drawn as
+   thin engraver's line-work the way a broadsheet would have printed them.
+   It is a single repeating tile, so it costs nothing and never loads.
+   ► Too strong? Drop the 0.085 in the SVG below. Gone entirely? Delete the
+     background-image and background-size lines. */
+.screen{position:fixed;inset:0;display:none;background-color:var(--paper);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320' viewBox='0 0 320 320'%3E%3Cg fill='none' stroke='%231C1814' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round' opacity='0.085'%3E%3Cg transform='translate(62,64)'%3E%3Ccircle r='27'/%3E%3Cpath d='M-15-22c9 10 9 34 0 44'/%3E%3Cpath d='M15-22c-9 10-9 34 0 44'/%3E%3Cpath d='M-18-14l-6 2M-19-6l-6 1M-19 2l-6 1M-18 10l-6 3M-15 17l-5 4'/%3E%3Cpath d='M18-14l6 2M19-6l6 1M19 2l6 1M18 10l6 3M15 17l5 4'/%3E%3C/g%3E%3Cg transform='translate(232,74) rotate(-18)'%3E%3Cpath d='M-9-76h18v11h-18z'/%3E%3Cpath d='M-6-65h12v43h-12z'/%3E%3Cpath d='M-6-54h12M-6-44h12M-6-34h12'/%3E%3Cpath d='M0-22c16 0 23 12 19 23c-4 10-4 16 0 25c5 13-5 26-19 26s-24-13-19-26c4-9 4-15 0-25c-4-11 3-23 19-23z'/%3E%3Ccircle cy='6' r='8'/%3E%3Cpath d='M-9 33h18'/%3E%3C/g%3E%3Cg transform='translate(74,236) rotate(26)'%3E%3Cellipse cy='-54' rx='5.5' ry='3.2'/%3E%3Cpath d='M-3-52h6v30c7 8 8 22 6 34c-1 8-4 14-9 14s-8-6-9-14c-2-12-1-26 6-34z'/%3E%3C/g%3E%3Cg transform='translate(228,236)'%3E%3Cpath d='M-14 13v-45l34-9v45'/%3E%3C/g%3E%3C/g%3E%3Cg fill='%231C1814' opacity='0.085'%3E%3Cellipse cx='208' cy='249' rx='8' ry='6' transform='rotate(-16 208 249)'/%3E%3Cellipse cx='242' cy='240' rx='8' ry='6' transform='rotate(-16 242 240)'/%3E%3C/g%3E%3C/svg%3E");
+  background-size:320px 320px}
 .screen.active{display:block}
 .sheet{
   position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
@@ -153,6 +177,26 @@ body{color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6;-we
 #hot.on{display:block}
 #hot::after{content:"";position:absolute;top:13px;left:13px;width:4px;height:4px;border-radius:50%;background:var(--ink);opacity:.18}
 #hot:focus{outline:none}
+
+/* the nudge on the gate, so nobody reads the whole paper in silence */
+.soundhint{font-family:var(--type);font-size:.58rem;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--ink2);opacity:.75;margin:22px 0 0}
+
+/* ─── the music switch, bottom right of every unlocked page ─── */
+.musicbtn{position:fixed;right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));
+  z-index:70;display:none;align-items:center;gap:8px;cursor:pointer;
+  font-family:var(--type);font-size:.56rem;letter-spacing:.18em;text-transform:uppercase;
+  background:var(--paper);border:1px solid var(--rule);color:var(--ink);padding:7px 12px 7px 9px;
+  box-shadow:3px 3px 0 rgba(28,24,20,.16);transition:background .18s,color .18s,opacity .18s;opacity:.82}
+.musicbtn.on{display:flex}
+.musicbtn:hover{background:var(--ink);color:var(--paper);opacity:1}
+.musicbtn:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+.musicbtn .note{font-family:Georgia,serif;font-size:1rem;line-height:1;display:block}
+.musicbtn[aria-pressed="true"] .note{color:var(--red);animation:sway 1.9s ease-in-out infinite}
+.musicbtn[aria-pressed="true"]:hover .note{color:var(--paper)}
+.musicbtn[aria-pressed="false"] .note{opacity:.45;text-decoration:line-through}
+@keyframes sway{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+@media(max-width:520px){.musicbtn .lbl{display:none}.musicbtn{padding:8px 10px}}
 
 /* ─── masthead ─── */
 .masthead{text-align:center}
@@ -468,6 +512,10 @@ input:focus,textarea:focus{outline:2px solid var(--red);outline-offset:0}
 <button id="hot" aria-label="."></button>
 <!-- the confetti burst paints here and nowhere else -->
 <canvas id="confetti" aria-hidden="true"></canvas>
+<!-- the music switch, on every page but the gate -->
+<button id="musicBtn" class="musicbtn" type="button" aria-pressed="true" aria-label="Background music">
+  <span class="note" aria-hidden="true">&#9834;</span><span class="lbl" id="musicLbl">Music</span>
+</button>
 
 <!-- ═══ SCREEN 0 — password gate ═══ -->
 <div class="screen active" id="screen-gate">
@@ -479,6 +527,7 @@ input:focus,textarea:focus{outline:2px solid var(--red);outline-offset:0}
       <input id="gatePw" type="password" placeholder="Password" autocomplete="off" data-ph="gatePlaceholder">
       <button class="btn" id="gateGo" data-txt="gateButton">Unlock the paper</button>
       <p class="status err" id="gateErr"></p>
+      <p class="soundhint" data-txt="soundHint">&#9834; Best read with your sound turned on</p>
     </div>
   </div>
 </div>
@@ -718,6 +767,7 @@ const SCREENS=['screen-gate','screen-home','screen-messages','screen-photos'];
 function showScreen(id){
   SCREENS.forEach(s=>$(s).classList.toggle('active',s===id));
   $('hot').classList.toggle('on',id!=='screen-gate');
+  $('musicBtn').classList.toggle('on',id!=='screen-gate');
 }
 /* works for buttons and for the SVG cake tiers alike */
 document.querySelectorAll('[data-go]').forEach(el=>{
@@ -1385,6 +1435,183 @@ function pictureTab(){
     if(!st.classList.contains('err')){st.textContent='Added and saved — still here after a refresh.'}
   }
 }
+
+/* ── BACKGROUND MUSIC ─────────────────────────────────────────────────────
+   One sound for the whole site. Nothing here ever stops when you turn a
+   page, because the site never actually reloads — the screens just swap.
+
+   Two engines, picked automatically:
+     • the FILE engine, if CONFIG.music points at an audio file that loads;
+     • otherwise the GUITAR engine, which fingerpicks a slow four-chord loop
+       out of thin air with the Web Audio API. No file, no download, and it
+       never plays the same bar twice in quite the same way.
+
+   Browsers will not let a page make noise before the reader has touched it,
+   so we wait for the first tap, click or key press and start there.
+   ───────────────────────────────────────────────────────────────────────── */
+const Music=(function(){
+  const KEY='wall_music_on';
+  const VOL=Math.max(0,Math.min(1,CONFIG.musicVolume===undefined?0.5:CONFIG.musicVolume));
+  const btn=$('musicBtn'),lbl=$('musicLbl');
+  let want=CONFIG.musicOnByDefault!==false;
+  try{const v=localStorage.getItem(KEY);if(v!==null)want=(v==='1')}catch(e){}
+  if(matchMedia('(prefers-reduced-motion:reduce)').matches){/* still fine to play */}
+
+  let engine=null,playing=false,armed=false,touched=false;
+
+  /* ── engine one: a real audio file ── */
+  function fileEngine(a){
+    let fade=null;
+    const ramp=(to,ms)=>{
+      clearInterval(fade);const from=a.volume,t0=performance.now();
+      fade=setInterval(()=>{
+        const k=Math.min(1,(performance.now()-t0)/ms);
+        a.volume=Math.max(0,Math.min(1,from+(to-from)*k));
+        if(k>=1){clearInterval(fade);if(to===0)a.pause()}
+      },40);
+    };
+    return{
+      kind:'file',
+      start(){const p=a.play();if(p&&p.catch)p.catch(()=>{});ramp(VOL,1200)},
+      stop(){ramp(0,600)}
+    };
+  }
+
+  /* ── engine two: a guitar built out of maths ──
+     Each note is a Karplus–Strong plucked string: a short burst of noise
+     chasing its own tail round a delay line the length of one wavelength,
+     losing a little brightness each lap. That is genuinely how a plucked
+     string decays, which is why it sounds like nylon and not like a beep. */
+  function guitarEngine(){
+    const AC=window.AudioContext||window.webkitAudioContext;
+    if(!AC)return null;
+    let ctx=null,master=null,timer=null,next=0,bar=0;
+    const BEAT=0.34;                                   // eighth note, ~88bpm feel
+    const CHORDS=[                                     // C · G · Am · F
+      [48,52,55,60,64],[43,47,50,55,59],[45,52,57,60,64],[41,45,48,53,57]
+    ];
+    const PICK=[0,2,4,3,1,4,2,3];                      // travis-ish picking order
+    const hz=m=>440*Math.pow(2,(m-69)/12);
+
+    function pluck(freq,at,vel){
+      const dur=0.022,n=Math.ceil(ctx.sampleRate*dur);
+      const buf=ctx.createBuffer(1,n,ctx.sampleRate),d=buf.getChannelData(0);
+      for(let i=0;i<n;i++)d[i]=(Math.random()*2-1)*(1-i/n);
+      const src=ctx.createBufferSource();src.buffer=buf;
+      const delay=ctx.createDelay(0.2);delay.delayTime.value=1/freq;
+      const lp=ctx.createBiquadFilter();lp.type='lowpass';lp.frequency.value=2400;
+      const fb=ctx.createGain();fb.gain.value=0.957;
+      const body=ctx.createBiquadFilter();body.type='peaking';body.frequency.value=210;body.gain.value=5;
+      const out=ctx.createGain();out.gain.value=vel;
+      src.connect(delay);delay.connect(lp);lp.connect(fb);fb.connect(delay);
+      delay.connect(body);body.connect(out);out.connect(master);
+      out.gain.setValueAtTime(vel,at);
+      out.gain.setTargetAtTime(0.0001,at+1.9,0.55);
+      src.start(at);src.stop(at+dur);
+      src.onended=()=>setTimeout(()=>{
+        try{src.disconnect();delay.disconnect();lp.disconnect();fb.disconnect();body.disconnect();out.disconnect()}catch(e){}
+      },4500);
+    }
+
+    let beat=0;                                        // which eighth of the bar
+    function schedule(){
+      while(next<ctx.currentTime+1.4){
+        const chord=CHORDS[bar%CHORDS.length];
+        const m=chord[PICK[beat]]+(Math.random()<0.12?12:0);   // the odd note an octave up
+        pluck(hz(m),next,(beat===0?0.5:0.3)*(0.85+Math.random()*0.3));
+        if(beat===0)pluck(hz(chord[0]-12),next,0.34);          // a low root to lean on
+        next+=BEAT;
+        beat++;
+        if(beat===8){beat=0;bar++}
+      }
+    }
+
+    return{
+      kind:'guitar',
+      get state(){return ctx?ctx.state:'idle'},
+      start(){
+        if(!ctx){
+          ctx=new AC();
+          master=ctx.createGain();master.gain.value=0.0001;
+          const warm=ctx.createBiquadFilter();warm.type='lowpass';warm.frequency.value=5200;
+          master.connect(warm);warm.connect(ctx.destination);
+        }
+        if(ctx.state==='suspended')ctx.resume();
+        next=Math.max(next,ctx.currentTime+0.15);
+        master.gain.cancelScheduledValues(ctx.currentTime);
+        master.gain.setValueAtTime(Math.max(0.0001,master.gain.value),ctx.currentTime);
+        master.gain.linearRampToValueAtTime(VOL*0.5,ctx.currentTime+1.4);
+        clearInterval(timer);schedule();timer=setInterval(schedule,250);
+      },
+      stop(){
+        if(!ctx)return;
+        clearInterval(timer);timer=null;
+        master.gain.cancelScheduledValues(ctx.currentTime);
+        master.gain.setValueAtTime(master.gain.value,ctx.currentTime);
+        master.gain.linearRampToValueAtTime(0.0001,ctx.currentTime+0.7);
+        setTimeout(()=>{if(!timer&&ctx.state==='running')ctx.suspend()},900);  // stop burning battery
+      }
+    };
+  }
+
+  /* Decide which engine we have, well before anybody taps anything, so the
+     first tap can start the sound immediately. A file that will not load
+     (missing, wrong name, unplayable) quietly hands over to the guitar. */
+  function choose(){
+    const src=(CONFIG.music||'').trim();
+    if(!src){engine=guitarEngine();return}
+    const a=new Audio();a.loop=true;a.preload='auto';a.volume=0;a.src=src;
+    let settled=false;
+    const good=()=>{if(settled)return;settled=true;engine=fileEngine(a);if(playing)engine.start()};
+    const bad =()=>{if(settled)return;settled=true;engine=guitarEngine();if(playing&&engine)engine.start()};
+    a.addEventListener('canplaythrough',good,{once:true});
+    a.addEventListener('canplay',good,{once:true});
+    a.addEventListener('error',bad,{once:true});
+    setTimeout(()=>{if(!settled&&a.readyState<3)bad()},4000);
+    try{a.load()}catch(e){bad()}
+  }
+
+  function paint(){
+    btn.setAttribute('aria-pressed',want?'true':'false');
+    btn.title=want?'Music on — tap for quiet':'Music off — tap to play';
+    if(lbl)lbl.textContent=want?'Music':'Muted';
+  }
+  function play(){ if(playing)return;playing=true;if(engine)engine.start() }
+  function hush(){ if(!playing)return;playing=false;if(engine)engine.stop() }
+
+  /* the first touch anywhere on the page is what buys us permission */
+  function arm(){
+    if(armed)return;armed=true;
+    const go=()=>{off();touched=true;if(want)play()};
+    const off=()=>{
+      document.removeEventListener('pointerdown',go);
+      document.removeEventListener('keydown',go);
+      document.removeEventListener('touchstart',go);
+    };
+    document.addEventListener('pointerdown',go);
+    document.addEventListener('keydown',go);
+    document.addEventListener('touchstart',go);
+  }
+
+  btn.addEventListener('click',e=>{
+    e.stopPropagation();
+    touched=true;
+    want=!want;
+    try{localStorage.setItem(KEY,want?'1':'0')}catch(e){}
+    paint();
+    want?play():hush();
+  });
+
+  /* a tab left in the background need not sing to an empty room */
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden)hush(); else if(want&&touched)play();
+  });
+
+  paint();choose();arm();
+  /* handy from the console: Music.status */
+  return{play,hush,get on(){return want},
+         get status(){return{wanted:want,playing,engine:engine&&engine.kind,state:engine&&engine.state}}};
+})();
 
 /* nothing is read or written until the store has been chosen */
 (async function boot(){
